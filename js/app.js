@@ -323,7 +323,7 @@ function meLesson(app,y,id){const data=ME["y"+y+"-me"];const L=data&&data.find(l
     if(k==="copy"){st.append(el("p",null,"انقل هذا بخط واضح إلى دفتر التربية الأخلاقية."),copyBook({date:new Date(),title:L.title,lines:[["هدف التعلّم",L.intentions[0]]],lists:[["الكلمات الرئيسة",L.words],["حقائق رئيسة",(L.copy&&L.copy.facts)||[]]]}),el("p",{html:`<span class="lbl">بطاقة الخروج:</span> ${esc(L.exit)}`}),copiedBox(ctx))}
     if(k==="quiz"){st.append(mcqBlock(ctx,"qa",L.quiz,()=>ctx.markDone("quiz")))}
     if(k==="reflect"){st.append(el("div",{class:"panel"},el("h4",null,"قيّم نفسك وفق معايير النجاح"),rateBlock(ctx,L.criteria)),el("div",{class:"panel"},el("label",{html:`<b>بطاقة الخروج.</b> ${esc(L.exit)}`}),textArea(S,"exit",ctx.save,4)));
-      if(L.next)st.append(el("p",{class:"notebar"},"الدرس القادم: "+L.next));
+      if(L.next)st.append(el("p",{class:"notebar"},"الدرس القادم: "+String(L.next).replace(/^\s*(الحصة القادمة|الدرس القادم|الدرس التالي|الحصة التالية)\s*[:：]\s*/,"")));
       st.append(handIn(ctx,{title:`السنة ${y} · التربية الأخلاقية · الدرس ${L.lesson} · ${L.title}`,sub:L.unit+" · الفصل الأول",file:`Y${y}_ME_L${L.lesson}`},()=>{const lv=LV();return [
         {h:"نشاط البداية (DNA)",rows:[["",L.dna]].concat((L.dnaQs&&L.dnaQs.length?L.dnaQs:["إجابتك"]).map((q,j)=>[q,(S.dna||[])[j]]))},
         {h:"المهمة 1: "+L.task1.title,rows:(L.task1.prompts||[]).map((p,j)=>[p,(S.t1||[])[j]])},

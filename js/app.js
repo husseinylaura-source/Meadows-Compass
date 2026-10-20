@@ -23,7 +23,7 @@ const YEARS = {
 const SUBJECTS = {
   msc:{name:"Moral, Social & Cultural Studies", short:"MSC", lang:"English", who:"For non-Arab students. Taught in English.", art:"globe"},
   ss: {name:"Social Studies", short:"Social Studies", lang:"العربية", who:"For Arab students. Taught in Arabic.", art:"explore"},
-  me: {name:"Moral Education", short:"Moral Education", lang:"English", who:"For Arab students.", art:"fair"},
+  me: {name:"Moral Education", short:"Moral Education", lang:"العربية", who:"For Arab students. Taught in Arabic.", art:"fair"},
   lit:{name:"Literacy", short:"Literacy", lang:"English", who:"READ · WORDS · WRITE. Taught while Islamic Education lessons run.", art:"book"}
 };
 const MSC_PLAN = {
@@ -87,15 +87,16 @@ function yearPage(app,y){const Y=YEARS[y];if(!Y)return home(app);crumbs([["Year 
 }
 function classFilter(y,sub,extra){const Y=YEARS[y];const cls=Y.classes.includes(me.cls)?me.cls:"";
   let info="";if(cls&&sub==="msc"&&Y.msc){const g=Y.msc.find(g=>g.classes.includes(cls));info=`<div class="classinfo"><div><b>Lesson</b>${esc(g.when)}</div><div><b>Teachers</b>${esc(g.teachers)}</div></div>`}
-  if(sub==="me"&&Y.me)info=`<div class="classinfo"><div><b>Teachers</b>${esc(Y.me)}</div></div>`;
-  return `<div class="panel"><div class="row" style="justify-content:space-between"><h3>Your class</h3><span class="small">${extra||"Pick your class"}</span></div>
+  const ar=sub==="ss"||sub==="me";
+  if(sub==="me"&&Y.me)info=`<div class="classinfo"><div><b>${ar?"المعلمون":"Teachers"}</b>${esc(Y.me)}</div></div>`;
+  return `<div class="panel"><div class="row" style="justify-content:space-between"><h3>${ar?"صفّك":"Your class"}</h3><span class="small">${ar?"اختر صفّك":(extra||"Pick your class")}</span></div>
     <div class="filter" role="group" aria-label="Class">${Y.classes.map(c=>`<button type="button" data-c="${c}" aria-pressed="${c===cls}">${c}</button>`).join("")}</div>${info}</div>`}
 function wireFilter(app,again){app.querySelectorAll(".filter button").forEach(b=>b.onclick=()=>{me.cls=b.dataset.c;store.set("me",me);setupMe();again()})}
 function progressOf(key,total){const s=store.get(key,{});const n=Object.keys(s.done||{}).length;return {n,total,pct:Math.round(n/total*100)}}
 
 function subjectPage(app,y,sub){const Y=YEARS[y];const S=SUBJECTS[sub];if(!Y||!S||!Y.subjects.includes(sub))return yearPage(app,y);
   crumbs([["Year "+y,"y"+y],[S.short]]);
-  const head=`<section class="hero-home sm" data-unit="${sub}"><div><span class="eyebrow">Year ${y} · ${esc(S.lang)}</span><h1>${esc(S.name)}</h1></div>${art(S.art)}</section>`;
+  const AR={ss:"الدراسات الاجتماعية",me:"التربية الأخلاقية"};const head=AR[sub]&&(SS["y"+y+"-ss"]&&sub==="ss"||ME["y"+y+"-me"]&&sub==="me")?`<section class="hero-home sm" data-unit="${sub}"><div><span class="eyebrow">السنة ${y} · ${esc(S.name)}</span><h1>${AR[sub]}</h1></div>${art(S.art)}</section>`:`<section class="hero-home sm" data-unit="${sub}"><div><span class="eyebrow">Year ${y} · ${esc(S.lang)}</span><h1>${esc(S.name)}</h1></div>${art(S.art)}</section>`;
   if((sub==="msc"&&MSC["y"+y+"-msc"])||(sub==="ss"&&SS["y"+y+"-ss"])){
     const data=sub==="ss"?SS["y"+y+"-ss"]:MSC["y"+y+"-msc"];const ar=sub==="ss";if(ar){app.setAttribute("dir","rtl");app.setAttribute("lang","ar")}const cls=Y.classes.includes(me.cls)?me.cls:"";const nowI=currentWeekIdx(data.map(l=>l.wc));
     app.innerHTML=head+classFilter(y,sub,ar?"Pick your class":"Pick your class to see your lesson day")+`<div class="weeks">${data.map((l,i)=>{const p=progressOf(`y${y}-${sub}-${l.id}`,MSC_STEPS.length-1);const ld=cls&&!ar?lessonDate(y,cls,l.wc).date:new Date(l.wc+"T00:00:00");
@@ -103,9 +104,9 @@ function subjectPage(app,y,sub){const Y=YEARS[y];const S=SUBJECTS[sub];if(!Y||!S
     return wireFilter(app,()=>subjectPage(app,y,sub));
   }
   if(sub==="me"&&ME["y"+y+"-me"]){
-    const data=ME["y"+y+"-me"];
+    const data=ME["y"+y+"-me"];app.setAttribute("dir","rtl");app.setAttribute("lang","ar");
     app.innerHTML=head+classFilter(y,sub)+`<div class="weeks">${data.map(l=>{const p=progressOf(`y${y}-me-${l.id}`,ME_STEPS.length-1);
-      return `<a class="wk" data-unit="me" href="#y${y}-me-${l.id}"><span class="thumb">${art(l.art,l.image)}</span><div style="min-width:0"><div class="t">Lesson ${l.lesson}: ${esc(l.title)}</div><div class="s">${esc(l.unit)} · Term 1</div><div class="meter"><i style="width:${p.pct}%"></i></div></div><span class="p">${p.n}/${p.total}</span></a>`}).join("")}</div>`;
+      return `<a class="wk" data-unit="me" href="#y${y}-me-${l.id}"><span class="thumb">${art(l.art,l.image)}</span><div style="min-width:0"><div class="t">الدرس ${l.lesson}: ${esc(l.title)}</div><div class="s">${esc(l.unit)} · الفصل الأول</div><div class="meter"><i style="width:${p.pct}%"></i></div></div><span class="p">${p.n}/${p.total}</span></a>`}).join("")}</div>`;
     return wireFilter(app,()=>subjectPage(app,y,sub));
   }
   const plan=sub==="msc"?MSC_PLAN[y]:sub==="ss"?SS_PLAN[y]:null;
@@ -197,7 +198,7 @@ function copyBook(o){/* {date,title,lines:[[label,text]],lists:[[label,[items]]]
 function copiedBox(ctx){const c=el("input",{type:"checkbox",id:"copied"});c.checked=!!ctx.S.copied;c.onchange=()=>{ctx.S.copied=c.checked;ctx.save();if(c.checked)ctx.markDone("copy")};return el("label",{class:"row",style:"font-weight:700"},c,T(" I have copied this into my book"," نقلت هذا إلى دفتري"))}
 function startersBar(starters,target){return el("div",{class:"starters"},el("span",{class:"small"},T("Sentence starters (tap to add):","بدايات جمل (اضغط للإضافة):")),...starters.map(s=>el("button",{type:"button",class:"chip btnchip",onclick:()=>{target.value+=(target.value&&!/\s$/.test(target.value)?" ":"")+s+" ";target.dispatchEvent(new Event("input"));target.focus()}},s)))}
 function wordTracker(list,target){const box=el("div",{class:"tracker"});const upd=()=>{const t=target.value.toLowerCase();box.innerHTML="";const used=list.filter(w=>t.includes(w.toLowerCase().split(" ")[0].slice(0,Math.max(4,w.length-2))));
-    box.append(el("span",{class:"small"},`Words used: ${used.length}/${list.length} · ${t.trim()?t.trim().split(/\s+/).length:0} words written`),...list.map(w=>el("span",{class:"wchip"+(used.includes(w)?" on":"")},w)))};target.addEventListener("input",upd);upd();return box}
+    box.append(el("span",{class:"small"},T(`Words used: ${used.length}/${list.length} · ${t.trim()?t.trim().split(/\s+/).length:0} words written`,`الكلمات المستخدمة: ${used.length}/${list.length} · عدد الكلمات: ${t.trim()?t.trim().split(/\s+/).length:0}`)),...list.map(w=>el("span",{class:"wchip"+(used.includes(w)?" on":"")},w)))};target.addEventListener("input",upd);upd();return box}
 function handIn(ctx,meta,sectionsFn){const msg=el("span",{class:"small"});const btn=el("button",{class:"btn",type:"button",onclick:()=>buildPDF(meta,sectionsFn(),msg,ctx)},T("Download my work (PDF)","نزّل عملي (PDF)"));
   return el("div",{class:"handin"},el("h3",null,T("Hand in on ManageBac","التسليم على ManageBac")),el("p",null,T("Download your work as a PDF, then upload it to this lesson's task on ManageBac.","نزّل عملك بصيغة PDF، ثم ارفعه في مهمة هذا الدرس على ManageBac.")),el("div",{class:"row"},btn,msg))}
 
@@ -288,46 +289,48 @@ function mscLesson(app,y,id,sub){sub=sub||"msc";const ar=sub==="ss";const data=a
 const UAE_FLAG=`<svg viewBox="0 0 44 30" aria-hidden="true"><rect width="12" height="30" fill="#c8102e"/><rect x="12" width="32" height="10" fill="#00843d"/><rect x="12" y="10" width="32" height="10" fill="#ffffff"/><rect x="12" y="20" width="32" height="10" fill="#000000"/><rect x=".5" y=".5" width="43" height="29" fill="none" stroke="var(--line)"/></svg>`;
 
 /* ================= Moral Education ================= */
-const ME_STEPS=[{k:"start",name:"Start",min:0},{k:"dna",name:"DNA",min:4,title:"DNA: Do Now Activity"},{k:"words",name:"Word bank",min:5,title:"Word bank"},{k:"task1",name:"Task 1",min:8},{k:"task2",name:"Task 2",min:10},{k:"task3",name:"Task 3",min:3},{k:"game",name:"Challenge",min:3},{k:"copy",name:"Copy book",min:2,title:"Copy into your exercise book"},{k:"quiz",name:"Quiz",min:4,title:"End-of-lesson quiz"},{k:"reflect",name:"Reflect & hand in",min:1}];
+const ME_STEPS=[{k:"start",name:"البداية",min:0},{k:"dna",name:"نشاط البداية",min:4,title:"نشاط البداية (DNA)"},{k:"words",name:"بنك الكلمات",min:5,title:"بنك الكلمات"},{k:"task1",name:"المهمة 1",min:8},{k:"task2",name:"المهمة 2",min:10},{k:"task3",name:"المهمة 3",min:3},{k:"game",name:"تحدٍّ",min:3},{k:"copy",name:"الدفتر",min:2,title:"انقل إلى دفترك"},{k:"quiz",name:"الاختبار",min:4,title:"اختبار نهاية الحصة"},{k:"reflect",name:"تأمّل وسلّم",min:1}];
+/* Moral Education is taught in Arabic: right-to-left pages, Arabic labels and an Arabic hand-in PDF. */
 function meLesson(app,y,id){const data=ME["y"+y+"-me"];const L=data&&data.find(l=>l.id===id);if(!L)return subjectPage(app,y,"me");
+  LANG="ar";app.setAttribute("dir","rtl");app.setAttribute("lang","ar");
   crumbs([["Year "+y,"y"+y],["Moral Education","y"+y+"-me"],["Lesson "+L.lesson]]);
-  const steps=ME_STEPS.map(s=>s.k==="task1"?{...s,title:"Task 1: "+L.task1.title}:s.k==="task2"?{...s,title:"Task 2: "+L.task2.title}:s.k==="task3"?{...s,title:"Task 3: "+(L.task3.name||L.task3.title)}:s.k==="game"?{...s,title:"Challenge: "+L.game.title}:s);
-  const termsList=L.words.map(w=>w[0]);
+  const steps=ME_STEPS.map(s=>s.k==="task1"?{...s,title:"المهمة 1: "+L.task1.title}:s.k==="task2"?{...s,title:"المهمة 2: "+L.task2.title}:s.k==="task3"?{...s,title:"المهمة 3: "+(L.task3.name||L.task3.title)}:s.k==="game"?{...s,title:"تحدٍّ: "+L.game.title}:s);
+  const termsList=L.words.map(w=>String(w[0]).replace(/\s*\(.*?\)\s*/g,"").trim());const mins=X=>`${esc(String(X.mins||""))}${typeof X.mins==="number"?" دقيقة":""}`;
   lessonShell(app,{key:`y${y}-me-${id}`,unit:"me",steps,render(k,st,ctx){const S=ctx.S;
-    if(k==="start"){st.append(el("div",{class:"cover",html:`<div style="display:grid;gap:12px"><span class="eyebrow">Year ${y} · Term 1 · Moral Education · ${esc(L.unit)}</span><h2>${esc(L.title)}</h2><div class="meta"><span class="chip">Lesson ${L.lesson}</span>${L.concept&&L.concept.key?`<span class="chip">Key concept: ${esc(L.concept.key)}</span>`:""}</div></div>${art(L.art,L.image)}`}));
-      if(!me.name||!me.cls)st.append(el("p",{class:"notebar",html:"Type your <b>name</b> and choose your <b>class</b> at the top so your work is labelled when you download it."}));
-      st.append(el("div",{class:"grid2"},el("div",{class:"panel"},el("h3",null,"Learning intentions"),el("ul",{class:"list"},L.intentions.map(o=>el("li",null,o)))),el("div",{class:"panel"},el("h3",null,"Success criteria"),el("ul",{class:"list"},L.criteria.map(o=>el("li",null,o))))));
-      if(L.concept)st.append(el("div",{class:"panel soi",html:`<h4>Statement of inquiry</h4><p class="big-q">${esc(L.concept.soi)}</p><div class="classinfo">${L.concept.related?`<div><b>Related concept</b>${esc(L.concept.related)}</div>`:""}${L.concept.context?`<div><b>Global context</b>${esc(L.concept.context)}</div>`:""}${L.concept.uae?`<div><b>UAE link</b>${esc(L.concept.uae)}</div>`:""}</div>`}));ctx.markDone("start")}
-    if(k==="dna"){st.append(el("div",{class:"scenario",html:`<span class="q">?</span><p>${esc(L.dna)}</p>`}),qaList(ctx,"dna",(L.dnaQs&&L.dnaQs.length?L.dnaQs:["Your answer"]).map((q,j,a)=>[q,j===a.length-1?L.dnaHint:""]),{modelLabel:"What a good answer includes",selfmark:false,onCheck:()=>ctx.markDone("dna")}));
+    if(k==="start"){st.append(el("div",{class:"cover",html:`<div style="display:grid;gap:12px"><span class="eyebrow">السنة ${y} · الفصل الأول · التربية الأخلاقية · ${esc(L.unit)}</span><h2>${esc(L.title)}</h2><div class="meta"><span class="chip">الدرس ${L.lesson}</span>${L.concept&&L.concept.key?`<span class="chip">المفهوم الرئيس: ${esc(L.concept.key)}</span>`:""}</div></div>${art(L.art,L.image)}`}));
+      if(!me.name||!me.cls)st.append(el("p",{class:"notebar",html:"اكتب <b>اسمك</b> واختر <b>صفّك</b> في أعلى الصفحة ليظهرا على عملك عند تنزيله."}));
+      st.append(el("div",{class:"grid2"},el("div",{class:"panel"},el("h3",null,"أهداف التعلّم"),el("ul",{class:"list"},L.intentions.map(o=>el("li",null,o)))),el("div",{class:"panel"},el("h3",null,"معايير النجاح"),el("ul",{class:"list"},L.criteria.map(o=>el("li",null,o))))));
+      if(L.concept)st.append(el("div",{class:"panel soi",html:`<h4>عبارة البحث</h4><p class="big-q">${esc(L.concept.soi)}</p><div class="classinfo">${L.concept.related?`<div><b>المفهوم ذو الصلة</b>${esc(L.concept.related)}</div>`:""}${L.concept.context?`<div><b>السياق العالمي</b>${esc(L.concept.context)}</div>`:""}${L.concept.uae?`<div><b>رابط بالإمارات</b>${esc(L.concept.uae)}</div>`:""}</div>`}));ctx.markDone("start")}
+    if(k==="dna"){st.append(el("div",{class:"scenario",html:`<span class="q">؟</span><p>${esc(L.dna)}</p>`}),qaList(ctx,"dna",(L.dnaQs&&L.dnaQs.length?L.dnaQs:["إجابتك"]).map((q,j,a)=>[q,j===a.length-1?L.dnaHint:""]),{modelLabel:"ما تتضمّنه الإجابة الجيدة",selfmark:false,onCheck:()=>ctx.markDone("dna")}));
       if(!L.dnaHint)ctx.markDone("dna")}
-    if(k==="words"){st.append(el("p",null,"Learn the key words. You will use them in Task 2."),flipCards(L.words.map(w=>[w[0],w[1],"Tap for the meaning",true]),"grid3"),el("h4",null,"Match the words"),(()=>{const r=el("div");matchGame(r,L.words,()=>{S.wordsDone=true;ctx.save();ctx.markDone("words")});return r})())}
-    if(k==="task1"){const T=L.task1;st.append(el("div",{class:"criterion",html:`<span class="chip">${esc(T.criterion||"")}</span><span class="chip">${esc(String(T.mins||""))}${typeof T.mins==="number"?" minutes":""}</span>`}),el("ol",{class:"steps-list"},T.steps.map(s=>el("li",null,s))));
-      st.append(qaList(ctx,"t1",(T.prompts||[]).map(p=>[p,""]),{rows:3}));if(T.success)st.append(el("details",{html:`<summary>What a strong answer includes</summary><div class="green"><small>Success</small>${esc(T.success)}</div>`}));
-      const c=el("button",{class:"btn",type:"button",onclick:()=>ctx.markDone("task1")},"I have finished my research");st.append(el("div",{class:"row"},c))}
-    if(k==="task2"){const T=L.task2;st.append(el("div",{class:"criterion",html:`<span class="chip">${esc(T.criterion||"")}</span><span class="chip">${esc(String(T.mins||""))}${typeof T.mins==="number"?" minutes":""}</span>`}));
-      if(T.extract)st.append(el("div",{class:"scenario",html:`<span class="q">“</span><p>${esc(T.extract)}</p>`}));st.append(el("ol",{class:"steps-list"},T.steps.map(s=>el("li",null,s))));
-      const t=textArea(S,"t2",ctx.save,8,"Write your paragraph here…");st.append(el("div",{class:"panel"},T.starters&&T.starters.length?startersBar(T.starters,t):null,t,wordTracker(termsList,t)));
-      const mod=el("div",{hidden:true,class:"stack"},el("div",{class:"green"},el("small",null,"Model answer"),T.model||""),T.rubric?el("div",{class:"rubric"},T.rubric.map(r=>el("div",null,el("b",null,r[0]),el("span",null,r[1])))):null);
-      st.append(el("div",{class:"row"},el("button",{class:"btn",type:"button",onclick:()=>{mod.hidden=false;ctx.markDone("task2")}},"Compare with the model answer")),mod);
-      if(T.rubric){S.t2band=S.t2band??null;const seg=el("div",{class:"seg"});T.rubric.forEach((r,j)=>{const b=el("button",{type:"button","aria-pressed":S.t2band===j},r[0]);b.onclick=()=>{S.t2band=j;ctx.save();seg.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b))};seg.append(b)});
-        st.append(el("div",{class:"panel"},el("h4",null,"Self-assess: which band is my paragraph in?"),el("div",{class:"rate"},el("div",{class:"r"},el("span",null,"My band"),seg))))}}
-    if(k==="task3"){const T=L.task3;S.t3=S.t3||[];st.append(el("div",{class:"criterion",html:`<span class="chip">${esc(T.criterion||"")}</span><span class="chip">${esc(String(T.mins||""))}</span>`}),el("p",null,"Group project. Tick each step when your group has done it, and plan your part below."));
-      const ch=el("div",{class:"checks"});T.steps.forEach((s,j)=>{const c=el("input",{type:"checkbox"});c.checked=!!S.t3[j];c.onchange=()=>{S.t3[j]=c.checked;ctx.save()};ch.append(el("label",null,c," "+s))});
-      st.append(el("div",{class:"panel"},ch),el("div",{class:"panel"},el("label",{html:"<b>Our plan and my role</b>"}),textArea(S,"t3plan",ctx.save,5)));
-      if(T.rubric)st.append(el("details",{html:`<summary>How the project is marked</summary><div class="rubric">${T.rubric.map(r=>`<div><b>${esc(r[0])}</b><span>${esc(r[1])}</span></div>`).join("")}</div>`}));
-      st.append(el("div",{class:"row"},el("button",{class:"btn",type:"button",onclick:()=>ctx.markDone("task3")},"Save our plan")))}
+    if(k==="words"){st.append(el("p",null,"تعلّم الكلمات الرئيسة، فستستخدمها في المهمة 2."),flipCards(L.words.map(w=>[w[0],w[1],"اضغط لمعرفة المعنى",true]),"grid3"),el("h4",null,"صِل الكلمات بمعانيها"),(()=>{const r=el("div");matchGame(r,L.words,()=>{S.wordsDone=true;ctx.save();ctx.markDone("words")});return r})())}
+    if(k==="task1"){const X=L.task1;st.append(el("div",{class:"criterion",html:`<span class="chip">${esc(X.criterion||"")}</span><span class="chip">${mins(X)}</span>`}),el("ol",{class:"steps-list"},X.steps.map(s=>el("li",null,s))));
+      st.append(qaList(ctx,"t1",(X.prompts||[]).map(p=>[p,""]),{rows:3}));if(X.success)st.append(el("details",{html:`<summary>ما تتضمّنه الإجابة القوية</summary><div class="green"><small>معيار النجاح</small>${esc(X.success)}</div>`}));
+      st.append(el("div",{class:"row"},el("button",{class:"btn",type:"button",onclick:()=>ctx.markDone("task1")},"أنهيت بحثي")))}
+    if(k==="task2"){const X=L.task2;st.append(el("div",{class:"criterion",html:`<span class="chip">${esc(X.criterion||"")}</span><span class="chip">${mins(X)}</span>`}));
+      if(X.extract)st.append(el("div",{class:"scenario",html:`<span class="q">“</span><p>${esc(X.extract)}</p>`}));st.append(el("ol",{class:"steps-list"},X.steps.map(s=>el("li",null,s))));
+      const t=textArea(S,"t2",ctx.save,8,"اكتب فقرتك هنا…");st.append(el("div",{class:"panel"},X.starters&&X.starters.length?startersBar(X.starters,t):null,t,wordTracker(termsList,t)));
+      const mod=el("div",{hidden:true,class:"stack"},el("div",{class:"green"},el("small",null,"الإجابة النموذجية"),X.model||""),X.rubric?el("div",{class:"rubric"},X.rubric.map(r=>el("div",null,el("b",null,r[0]),el("span",null,r[1])))):null);
+      st.append(el("div",{class:"row"},el("button",{class:"btn",type:"button",onclick:()=>{mod.hidden=false;ctx.markDone("task2")}},"قارن بالإجابة النموذجية")),mod);
+      if(X.rubric){S.t2band=S.t2band??null;const seg=el("div",{class:"seg"});X.rubric.forEach((r,j)=>{const b=el("button",{type:"button","aria-pressed":S.t2band===j},r[0]);b.onclick=()=>{S.t2band=j;ctx.save();seg.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b))};seg.append(b)});
+        st.append(el("div",{class:"panel"},el("h4",null,"قيّم نفسك: في أي مستوى تقع فقرتي؟"),el("div",{class:"rate"},el("div",{class:"r"},el("span",null,"مستواي"),seg))))}}
+    if(k==="task3"){const X=L.task3;S.t3=S.t3||[];st.append(el("div",{class:"criterion",html:`<span class="chip">${esc(X.criterion||"")}</span><span class="chip">${mins(X)}</span>`}),el("p",null,"مشروع جماعي. ضع علامة على كل خطوة تنجزها مجموعتك، وخطّط لدورك في الأسفل."));
+      const ch=el("div",{class:"checks"});X.steps.forEach((s,j)=>{const c=el("input",{type:"checkbox"});c.checked=!!S.t3[j];c.onchange=()=>{S.t3[j]=c.checked;ctx.save()};ch.append(el("label",null,c," "+s))});
+      st.append(el("div",{class:"panel"},ch),el("div",{class:"panel"},el("label",{html:"<b>خطتنا ودوري فيها</b>"}),textArea(S,"t3plan",ctx.save,5)));
+      if(X.rubric)st.append(el("details",{html:`<summary>كيف يُقيَّم المشروع</summary><div class="rubric">${X.rubric.map(r=>`<div><b>${esc(r[0])}</b><span>${esc(r[1])}</span></div>`).join("")}</div>`}));
+      st.append(el("div",{class:"row"},el("button",{class:"btn",type:"button",onclick:()=>ctx.markDone("task3")},"احفظ خطتنا")))}
     if(k==="game"){st.append(el("p",null,L.game.prompt));const r=el("div");st.append(r);(L.game.type==="order"?orderGame:sortGame)(r,L.game,(n,t)=>{S.game=Math.max(S.game||0,n);S.gameMax=t;ctx.save();ctx.markDone("game")})}
-    if(k==="copy"){st.append(el("p",null,"Copy this neatly into your Moral Education book."),copyBook({date:new Date(),title:L.title,lines:[["LI",L.intentions[0]]],lists:[["Key words",L.words],["Key facts",(L.copy&&L.copy.facts)||[]]]}),el("p",{html:`<span class="lbl">Exit ticket:</span> ${esc(L.exit)}`}),copiedBox(ctx))}
+    if(k==="copy"){st.append(el("p",null,"انقل هذا بخط واضح إلى دفتر التربية الأخلاقية."),copyBook({date:new Date(),title:L.title,lines:[["هدف التعلّم",L.intentions[0]]],lists:[["الكلمات الرئيسة",L.words],["حقائق رئيسة",(L.copy&&L.copy.facts)||[]]]}),el("p",{html:`<span class="lbl">بطاقة الخروج:</span> ${esc(L.exit)}`}),copiedBox(ctx))}
     if(k==="quiz"){st.append(mcqBlock(ctx,"qa",L.quiz,()=>ctx.markDone("quiz")))}
-    if(k==="reflect"){st.append(el("div",{class:"panel"},el("h4",null,"Self-assess against the success criteria"),rateBlock(ctx,L.criteria)),el("div",{class:"panel"},el("label",{html:`<b>Exit ticket.</b> ${esc(L.exit)}`}),textArea(S,"exit",ctx.save,4)));
-      if(L.next)st.append(el("p",{class:"notebar"},"Next lesson: "+L.next));
-      st.append(handIn(ctx,{title:`Year ${y} Moral Education · Lesson ${L.lesson} · ${L.title}`,sub:L.unit+" · Term 1",file:`Y${y}_ME_L${L.lesson}`},()=>{const lv=["Not yet","Nearly there","Confident"];return [
-        {h:"DNA: Do Now Activity",rows:[["",L.dna]].concat((L.dnaQs&&L.dnaQs.length?L.dnaQs:["Your answer"]).map((q,j)=>[q,(S.dna||[])[j]]))},
-        {h:"Task 1: "+L.task1.title,rows:(L.task1.prompts||[]).map((p,j)=>[p,(S.t1||[])[j]])},
-        {h:"Task 2: "+L.task2.title,rows:[["My paragraph",S.t2],["My band",S.t2band!=null&&L.task2.rubric?L.task2.rubric[S.t2band][0]:"-"]]},
-        {h:"Task 3: "+(L.task3.name||L.task3.title),rows:[["Steps done",L.task3.steps.map((s,j)=>((S.t3||[])[j]?"[x] ":"[ ] ")+s).join("\n")],["Our plan and my role",S.t3plan]]},
-        {h:`Challenge and quiz`,rows:[["Challenge: "+L.game.title,S.game!=null?`${S.game}/${S.gameMax}`:"Not completed"],["Quiz",`${S.qaScore??0}/${L.quiz.length}`]]},
-        {h:"Reflection",rows:L.criteria.map((c,j)=>[c,(S.rate||[])[j]!=null?lv[S.rate[j]]:"-"]).concat([["Exit ticket: "+L.exit,S.exit],["Copied notes into book",S.copied?"Yes":"Not yet"]])}]}))}
+    if(k==="reflect"){st.append(el("div",{class:"panel"},el("h4",null,"قيّم نفسك وفق معايير النجاح"),rateBlock(ctx,L.criteria)),el("div",{class:"panel"},el("label",{html:`<b>بطاقة الخروج.</b> ${esc(L.exit)}`}),textArea(S,"exit",ctx.save,4)));
+      if(L.next)st.append(el("p",{class:"notebar"},"الدرس القادم: "+L.next));
+      st.append(handIn(ctx,{title:`السنة ${y} · التربية الأخلاقية · الدرس ${L.lesson} · ${L.title}`,sub:L.unit+" · الفصل الأول",file:`Y${y}_ME_L${L.lesson}`},()=>{const lv=LV();return [
+        {h:"نشاط البداية (DNA)",rows:[["",L.dna]].concat((L.dnaQs&&L.dnaQs.length?L.dnaQs:["إجابتك"]).map((q,j)=>[q,(S.dna||[])[j]]))},
+        {h:"المهمة 1: "+L.task1.title,rows:(L.task1.prompts||[]).map((p,j)=>[p,(S.t1||[])[j]])},
+        {h:"المهمة 2: "+L.task2.title,rows:[["فقرتي",S.t2],["مستواي",S.t2band!=null&&L.task2.rubric?L.task2.rubric[S.t2band][0]:"-"]]},
+        {h:"المهمة 3: "+(L.task3.name||L.task3.title),rows:[["الخطوات المنجزة",L.task3.steps.map((s,j)=>((S.t3||[])[j]?"☑ ":"☐ ")+s).join("\n")],["خطتنا ودوري فيها",S.t3plan]]},
+        {h:"التحدّي والاختبار",rows:[["التحدّي: "+L.game.title,S.game!=null?`${S.game}/${S.gameMax}`:"لم يكتمل"],["الاختبار",`${S.qaScore??0}/${L.quiz.length}`]]},
+        {h:"التأمّل",rows:L.criteria.map((c,j)=>[c,(S.rate||[])[j]!=null?lv[S.rate[j]]:"-"]).concat([["بطاقة الخروج: "+L.exit,S.exit],["نقلت الملاحظات إلى الدفتر",S.copied?"نعم":"ليس بعد"]])}]}))}
   }});
 }
 

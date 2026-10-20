@@ -28,4 +28,4 @@ Then add a `<script src="data/…"></script>` line for each new file in `index.h
 - Add a video with keys like `"y7-ss-w04"` in `data/videos.js`.
 
 ## Moral Education
-- Years 7–8 come from the department's decks. Years 9–13 (`data/y9-me.js` … `data/y13-me.js`) were written from the MOE 2025–26 Term 1 book contents. Replace any lesson by editing its file.
+- All years are in Arabic. Years 7–8 come from the department's decks; Years 9–13 (`data/y9-me.js` … `data/y13-me.js`) were written from the MOE 2025–26 Term 1 book contents. Replace any lesson by editing its file.

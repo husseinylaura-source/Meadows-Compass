@@ -47,10 +47,12 @@ function lock(app, msg){
       <label>Password<input id="sdPass" type="password" autocomplete="current-password" required></label>
       <button class="btn" type="submit">Sign in</button></form>
     <p class="sd-msg" id="sdMsg" role="status">${esc(msg||"")}</p>
-    <p class="small">No account yet? Ask your Head of Teaching &amp; Learning to add you.</p></section>`;
+    <p class="small">No account yet? Ask your Head of Teaching &amp; Learning to add you.</p>
+    <div class="sd-demo"><span class="small">Want to see how it works first?</span><button class="btn sm alt" id="sdDemo2" type="button">See a demo with sample data</button></div></section>`;
   app.querySelector("#sdForm").onsubmit = e => { e.preventDefault();
     call(app, {action:"data"}, {user: app.querySelector("#sdUser").value.trim(), pass: app.querySelector("#sdPass").value}); };
   app.querySelector("#sdUser").focus();
+  const dm = app.querySelector("#sdDemo2"); if(dm) dm.onclick = () => { DATA = sample(); F = defaults(DATA); render(app); };
 }
 
 /* Every request to the Sheet: sign in, load data, add or remove a student. */

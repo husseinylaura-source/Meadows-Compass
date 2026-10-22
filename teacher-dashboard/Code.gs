@@ -50,7 +50,7 @@ const NONE = { name: "No work yet", bg: "#eeeeee", fg: "#555555" };
 /* Full names for teacher codes (the master list's key gives "Ms. Ayoub" style names or none). Edit freely. */
 const KNOWN_NAMES = { SAY: "Sara Ayoub", PLO: "Premraj Loganathan", AZE: "Aiman Zein", RKH: "Rasha Khasawneh",
   LHU: "Laura Husseiny", EPU: "Emel Punar", AIS: "Abeer Issa", FNA: "Fardoos Nagi", AEL: "Amany Elgwely",
-  MAL: "Mariam Aldaouk", RAL: "Raj Alrahman", RKA: "Ruby Kaur", ANE: "Ashley New", NQU: "Naveed Qureshi",
+  MAL: "Mariam Aldaouk", RAL: "Rahma Al Louati", RKA: "Ruby Kaur", ANE: "Ashley New", NQU: "Naveed Qureshi",
   RZE: "Rida Zein", MEL: "Marwa Elgamel", CYO: "Chelsea Young", RRA: "Raj Rahman" };
 /* Shared lists: every student in these years and subjects is given to all these teachers (2026–27 timetable:
    Years 12–13 Moral Education is taught by MEL and RZE). Each teacher removes the students who aren't theirs.

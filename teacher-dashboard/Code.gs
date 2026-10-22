@@ -8,7 +8,9 @@
  *   Results     – one row per student per lesson (raw data sent by the website)
  *   Roster      – paste your class lists here (Class | Student)
  *   Name fixes  – correct names students typed differently from the roster
- *   Settings    – term start dates and how the term average is worked out
+ *   Settings    – term start dates, how the term average is worked out, staff passcode
+ *
+ * It also feeds the Staff dashboard page on the website (#teacher), which asks for the staff passcode.
  *
  * Setup: Extensions → Apps Script → paste this file → Run "setup" → Deploy as Web app.
  * Full steps are in teacher-dashboard/SETUP.md.
@@ -44,8 +46,46 @@ function band(pct) {
 
 /* ---------------- receiving results from the website ---------------- */
 
-function doGet() {
-  return ContentService.createTextOutput("Meadows Compass results endpoint is running.");
+function doGet(e) {
+  const p = (e && e.parameter) || {};
+  if (p.code == null) return ContentService.createTextOutput("Meadows Compass results endpoint is running.");
+  return json_(teacherData_(String(p.code)));
+}
+
+/* Data for the staff dashboard page on the website (needs the Staff passcode from Settings). */
+function teacherData_(code) {
+  const cache = CacheService.getScriptCache();
+  const fails = Number(cache.get("fails") || 0);
+  if (fails >= 10) return { error: "locked", message: "Too many wrong passcodes. Try again in 10 minutes." };
+  const pass = String(settings_()["Staff passcode"] || "").trim();
+  if (!pass) return { error: "nopass", message: "Set a Staff passcode on the Settings tab of the Sheet first." };
+  if (code.trim() !== pass) {
+    cache.put("fails", String(fails + 1), 600);
+    Utilities.sleep(1000);
+    return { error: "wrong", message: "That passcode isn't right." };
+  }
+  const d = computeData_();
+  const iso = v => v instanceof Date ? Utilities.formatDate(v, "Asia/Dubai", "yyyy-MM-dd") : (v || "");
+  const groups = Object.keys(d.groups).sort(groupSort_).map(k => {
+    const g = d.groups[k];
+    return { term: g.term, year: g.year, cls: g.cls, subject: g.subj,
+      lessons: g.lessonList.map(l => ({ id: String(l.id), title: l.title, date: iso(l.date) })),
+      students: g.studentList.map(st => ({ name: st.name, onRoster: !!d.onRoster[g.cls + "|" + nameKey_(st.name)],
+        done: Object.keys(st.done).reduce((o, id) => { const x = st.done[id];
+          o[id] = [Math.round(x.pct), x.complete ? 1 : 0, x.steps]; return o; }, {}) })) };
+  });
+  return { ok: true, updated: new Date().toISOString(), zeroForMissed: d.zeroForMissed,
+    terms: settingsTerms_(), groups };
+}
+
+function settingsTerms_() {
+  const s = settings_(), out = {};
+  ["Term 1", "Term 2", "Term 3"].forEach(t => { const v = s[t + " starts"]; out[t] = v instanceof Date ? Utilities.formatDate(v, "Asia/Dubai", "yyyy-MM-dd") : ""; });
+  return out;
+}
+
+function json_(o) {
+  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
@@ -122,8 +162,7 @@ function termOf_(date) {
 
 /* ---------------- building the dashboard ---------------- */
 
-function refresh() {
-  const ss = SpreadsheetApp.getActive();
+function computeData_() {
   const s = settings_();
   const zeroForMissed = String(s["Missed lessons count as 0%"] || "No").toLowerCase().indexOf("y") === 0;
 
@@ -176,6 +215,12 @@ function refresh() {
         g.lessonList.filter(l => !st.done[l.id]).map(l => l.title).join(" · ")]);
     });
   });
+  return { groups, report, onRoster, zeroForMissed };
+}
+
+function refresh() {
+  const ss = SpreadsheetApp.getActive();
+  const data = computeData_(), groups = data.groups, report = data.report;
   writeTable_(SH.report, REPORT_HEAD, report);
   const rs = sheet_(SH.report);
   if (report.length) {
@@ -266,6 +311,9 @@ function setup() {
     st.getRange("B2:B4").setNumberFormat("d mmm yyyy");
     st.getRange("B5").setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(["No", "Yes"]).build());
     st.setColumnWidth(1, 220); st.setColumnWidth(2, 220); st.setColumnWidth(3, 520);
+  }
+  if (st.getRange("A7").getValue() !== "Staff passcode") {
+    st.getRange("A7:C7").setValues([["Staff passcode", "", "Teachers type this to open the Staff dashboard on the website. Use something long, and don't share it with students."]]);
   }
 
   // Raw tables

@@ -1,7 +1,8 @@
 # Teacher Dashboard – setup (about 10 minutes, once)
 
-Students' lesson scores go from the website into a Google Sheet. Teachers open the Sheet to see who has
-and hasn't completed each lesson, each student's term average and their band.
+Students' lesson scores go from the website into a Google Sheet. Teachers see who has and hasn't completed
+each lesson, each student's term average and their band, either on the website's **Staff** page
+(passcode) or in the Sheet itself.
 
 | Band | Lesson / term % |
 |---|---|
@@ -41,14 +42,25 @@ set "Missed lessons count as 0%" to Yes on the Settings tab.
 Students must type their **name and choose their class** at the top of the site, otherwise nothing is sent
 (the site reminds them).
 
-## 4. Fill in the Sheet
+## 4. Open the Staff dashboard on the website
+1. In the Sheet, **Settings** tab, type a **Staff passcode** in B7 (something long; don't share it with students).
+2. Go to the website and click **Staff** at the bottom of any page (or add `#teacher` to the address).
+3. Type the passcode. You get filters for term, year group, class and subject; the four bands with counts
+   and %; average completion and term %; every student with the lessons they haven't attempted; and,
+   when you pick one class and one subject, a lesson-by-lesson grid. **Print report** and
+   **Download CSV** are at the top. The passcode is remembered until the browser tab is closed or you press **Lock**.
+
+Before the Sheet is connected, the Staff page offers **Preview with sample data** (made-up students) so you
+can see how it looks.
+
+## 5. Fill in the Sheet
 - **Roster**: paste each class list (column A class e.g. `8A`, column B full name). Students on the roster
   who have done nothing still appear, marked "No work yet" / "—".
 - **Settings**: check the three term start dates match the school calendar.
 - **Name fixes**: if the Report shows "Check name" (a student typed their name differently), add a row:
   name they typed · class · correct roster name.
 
-## 5. Use it
+## 6. Use the Sheet
 - **Dashboard**: pick Term, Year group, Class and Subject (yellow cells). You see how many students are in
   each band and what % that is, the share Meeting or above, average completion, and every student
   with the lessons they haven't attempted yet.
@@ -62,7 +74,7 @@ Share the Sheet with teachers as **Viewer** (or Commenter) so the data isn't edi
 
 ## Good to know
 - Only scores are sent (name, class, lesson, %), not students' written answers.
-- If you change the script later, use **Deploy → Manage deployments → Edit → New version** so the
+- If you change the script later (including this version, which adds the Staff page feed), use **Deploy → Manage deployments → Edit → New version** so the
   website's URL stays the same.
 - The web address is public, so in principle someone could send made-up results. Names that aren't on the
   Roster are flagged "Check name" on the Report.

@@ -60,6 +60,8 @@ window.addEventListener("hashchange",route);
 function crumbs(parts){$("#crumbs").innerHTML=`<a class="brand" href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 8.5 13.4 13.4 8.5 15.5 10.6 10.6z" fill="var(--ta)" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>Meadows Compass</a>`+parts.map(p=>`<span class="sep">›</span>`+(p[1]?`<a href="#${p[1]}">${esc(p[0])}</a>`:`<span>${esc(p[0])}</span>`)).join("")}
 function route(){
   clearInterval(route._tick);const h=(location.hash||"").slice(1);const app=$("#app");app.removeAttribute("data-unit");LANG="en";app.removeAttribute("dir");app.removeAttribute("lang");window.scrollTo(0,0);let m;
+  window.Teacher&&Teacher.leave();
+  if(h==="teacher")return window.Teacher?Teacher.show(app,crumbs):home(app);
   if(!h)return home(app);
   if((m=h.match(/^y(\d+)$/)))return yearPage(app,+m[1]);
   if((m=h.match(/^y(\d+)-(msc|ss|me)$/)))return subjectPage(app,+m[1],m[2]);

@@ -8,16 +8,18 @@
  *   Results     – one row per student per lesson (raw data sent by the website)
  *   Roster      – paste your class lists here (Class | Student)
  *   Name fixes  – correct names students typed differently from the roster
- *   Settings    – term start dates, how the term average is worked out, staff passcode
+ *   Teachers    – staff usernames and passwords, and which classes / subjects each can see
+ *   Settings    – term start dates and how the term average is worked out
  *
- * It also feeds the Staff dashboard page on the website (#teacher), which asks for the staff passcode.
+ * It also feeds the Staff dashboard page on the website (#teacher): each teacher signs in and sees only
+ * their own classes, and can add missing students to their class lists.
  *
  * Setup: Extensions → Apps Script → paste this file → Run "setup" → Deploy as Web app.
  * Full steps are in teacher-dashboard/SETUP.md.
  */
 
 const SH = { dash: "Dashboard", comp: "Completion", report: "Report", results: "Results",
-             roster: "Roster", fixes: "Name fixes", settings: "Settings", lists: "Lists" };
+             roster: "Roster", fixes: "Name fixes", settings: "Settings", lists: "Lists", teachers: "Teachers" };
 
 const RESULT_HEAD = ["Updated", "Term", "Year", "Class", "Student", "Subject", "Lesson", "Lesson date",
   "Steps done", "Steps total", "Auto-marked correct", "Auto-marked total", "Steps %", "Auto-marked %",
@@ -46,36 +48,95 @@ function band(pct) {
 
 /* ---------------- receiving results from the website ---------------- */
 
-function doGet(e) {
-  const p = (e && e.parameter) || {};
-  if (p.code == null) return ContentService.createTextOutput("Meadows Compass results endpoint is running.");
-  return json_(teacherData_(String(p.code)));
+function doGet() {
+  return ContentService.createTextOutput("Meadows Compass results endpoint is running.");
 }
 
-/* Data for the staff dashboard page on the website (needs the Staff passcode from Settings). */
-function teacherData_(code) {
-  const cache = CacheService.getScriptCache();
-  const fails = Number(cache.get("fails") || 0);
-  if (fails >= 10) return { error: "locked", message: "Too many wrong passcodes. Try again in 10 minutes." };
-  const pass = String(settings_()["Staff passcode"] || "").trim();
-  if (!pass) return { error: "nopass", message: "Set a Staff passcode on the Settings tab of the Sheet first." };
-  if (code.trim() !== pass) {
-    cache.put("fails", String(fails + 1), 600);
-    Utilities.sleep(1000);
-    return { error: "wrong", message: "That passcode isn't right." };
+/* ---------------- staff accounts (Teachers tab) ----------------
+   Username | Password | Name | Classes | Subjects | Role
+   Role "Leader" sees every class. Role "Teacher" sees only the classes listed (e.g. "8A, 8B")
+   and, if Subjects is filled in (e.g. "MSC, Literacy"), only those subjects. */
+
+function staffAction_(d) {
+  const who = auth_(d);
+  if (who.error) return who;
+  const lock = LockService.getScriptLock();
+  if (d.action === "addStudent" || d.action === "removeStudent") {
+    const cls = String(d.cls || "").trim().toUpperCase(), name = tidyName_(String(d.name || "").replace(/[\u0000-\u001f]/g, " ").slice(0, 80));
+    if (!/^\d{1,2}[A-Z]$/.test(cls) || !name) return { error: "bad", message: "Enter a full name and choose a class." };
+    if (!canSeeClass_(who, cls)) return { error: "denied", message: "You can only change your own class lists." };
+    lock.waitLock(20000);
+    try {
+      const sh = sheet_(SH.roster), list = rows_(SH.roster);
+      const idx = list.findIndex(r => String(r[0]).trim().toUpperCase() === cls && nameKey_(r[1]) === nameKey_(name));
+      if (d.action === "addStudent") {
+        if (idx >= 0) return Object.assign(dataFor_(who), { message: name + " is already on the " + cls + " list." });
+        sh.appendRow([cls, name, who.user, new Date()]);
+      } else {
+        if (idx < 0) return Object.assign(dataFor_(who), { message: name + " isn't on the " + cls + " list." });
+        const addedBy = String(list[idx][2] || "");
+        if (who.role !== "leader" && addedBy.toLowerCase() !== who.user)
+          return { error: "denied", message: "Only students you added can be removed. Ask a leader to change the main class list." };
+        sh.deleteRow(rowOfRoster_(sh, cls, name));
+      }
+    } finally { lock.releaseLock(); }
+    return Object.assign(dataFor_(who), { message: d.action === "addStudent" ? name + " added to " + cls + "." : name + " removed from " + cls + "." });
   }
+  return dataFor_(who);
+}
+
+function rowOfRoster_(sh, cls, name) {
+  const v = sh.getRange(2, 1, Math.max(1, sh.getLastRow() - 1), 2).getValues();
+  for (let i = 0; i < v.length; i++)
+    if (String(v[i][0]).trim().toUpperCase() === cls && nameKey_(v[i][1]) === nameKey_(name)) return i + 2;
+  throw new Error("not found");
+}
+
+function auth_(d) {
+  const user = String(d.user || "").trim().toLowerCase(), pass = String(d.pass || "");
+  if (!user || !pass) return { error: "wrong", message: "Enter your username and password." };
+  const cache = CacheService.getScriptCache(), ck = "fails:" + user;
+  const fails = Number(cache.get(ck) || 0);
+  if (fails >= 8) return { error: "locked", message: "Too many wrong passwords for this username. Try again in 15 minutes." };
+  const row = rows_(SH.teachers).find(r => String(r[0]).trim().toLowerCase() === user);
+  if (!row || String(row[1]) === "" || String(row[1]) !== pass) {
+    cache.put(ck, String(fails + 1), 900);
+    Utilities.sleep(800);
+    return { error: "wrong", message: "That username or password isn't right." };
+  }
+  cache.remove(ck);
+  const list = v => String(v || "").split(/[,;\n]/).map(x => x.trim()).filter(Boolean);
+  const role = /leader|admin|slt/i.test(String(row[5] || "")) ? "leader" : "teacher";
+  return { user, name: String(row[2] || user), role,
+    classes: list(row[3]).map(c => c.toUpperCase()),
+    subjects: list(row[4]).map(x => SUBJECTS.find(s => s.toLowerCase() === x.toLowerCase())).filter(Boolean) };
+}
+
+function canSeeClass_(who, cls) { return who.role === "leader" || who.classes.indexOf(cls) >= 0; }
+function canSeeSubject_(who, subj) { return who.role === "leader" || !who.subjects.length || who.subjects.indexOf(subj) >= 0; }
+
+/* Everything the signed-in teacher may see: results for their classes and subjects, and their class lists. */
+function dataFor_(who) {
   const d = computeData_();
   const iso = v => v instanceof Date ? Utilities.formatDate(v, "Asia/Dubai", "yyyy-MM-dd") : (v || "");
-  const groups = Object.keys(d.groups).sort(groupSort_).map(k => {
-    const g = d.groups[k];
-    return { term: g.term, year: g.year, cls: g.cls, subject: g.subj,
+  const groups = Object.keys(d.groups).sort(groupSort_).map(k => d.groups[k])
+    .filter(g => canSeeClass_(who, g.cls) && canSeeSubject_(who, g.subj))
+    .map(g => ({ term: g.term, year: g.year, cls: g.cls, subject: g.subj,
       lessons: g.lessonList.map(l => ({ id: String(l.id), title: l.title, date: iso(l.date) })),
       students: g.studentList.map(st => ({ name: st.name, onRoster: !!d.onRoster[g.cls + "|" + nameKey_(st.name)],
         done: Object.keys(st.done).reduce((o, id) => { const x = st.done[id];
-          o[id] = [Math.round(x.pct), x.complete ? 1 : 0, x.steps]; return o; }, {}) })) };
+          o[id] = [Math.round(x.pct), x.complete ? 1 : 0, x.steps]; return o; }, {}) })) }));
+  const roster = {};
+  rows_(SH.roster).forEach(r => {
+    const c = String(r[0]).trim().toUpperCase(), n = tidyName_(String(r[1] || ""));
+    if (!c || !n || !canSeeClass_(who, c)) return;
+    (roster[c] = roster[c] || []).push({ name: n, addedBy: String(r[2] || "").toLowerCase() });
   });
-  return { ok: true, updated: new Date().toISOString(), zeroForMissed: d.zeroForMissed,
-    terms: settingsTerms_(), groups };
+  Object.keys(roster).forEach(c => roster[c].sort((a, b) => a.name.localeCompare(b.name)));
+  const myClasses = who.role === "leader" ? unique_(Object.keys(roster).concat(groups.map(g => g.cls))).sort(classSort_) : who.classes.slice().sort(classSort_);
+  return { ok: true, updated: new Date().toISOString(), zeroForMissed: d.zeroForMissed, terms: settingsTerms_(),
+    me: { user: who.user, name: who.name, role: who.role, classes: myClasses, subjects: who.subjects },
+    roster, groups };
 }
 
 function settingsTerms_() {
@@ -91,6 +152,7 @@ function json_(o) {
 function doPost(e) {
   let d;
   try { d = JSON.parse(e.postData.contents); } catch (err) { return out_("bad json"); }
+  if (d && d.action) return json_(staffAction_(d));   // Staff page: sign in, class lists
   const clean = validate_(d);
   if (!clean) return out_("rejected");
   const lock = LockService.getScriptLock();
@@ -312,16 +374,28 @@ function setup() {
     st.getRange("B5").setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(["No", "Yes"]).build());
     st.setColumnWidth(1, 220); st.setColumnWidth(2, 220); st.setColumnWidth(3, 520);
   }
-  if (st.getRange("A7").getValue() !== "Staff passcode") {
-    st.getRange("A7:C7").setValues([["Staff passcode", "", "Teachers type this to open the Staff dashboard on the website. Use something long, and don't share it with students."]]);
-  }
+  if (st.getRange("A7").getValue() === "Staff passcode") st.getRange("A7:C7").clearContent();   // replaced by the Teachers tab
 
   // Raw tables
   header_(SH.results, RESULT_HEAD);
   const res = sheet_(SH.results);
   res.getRange("A:A").setNumberFormat("d mmm yyyy HH:mm"); res.getRange("H:H").setNumberFormat("d mmm yyyy");
   res.getRange("M:O").setNumberFormat("0%"); res.hideColumns(R.Key + 1);
-  header_(SH.roster, ["Class", "Student", "", "Paste each class list here: class in column A (e.g. 8A), full name in column B."]);
+  header_(SH.roster, ["Class", "Student", "Added by", "Added on", "", "Paste each class list here: class in column A (e.g. 8A), full name in column B. Teachers can also add students from the Staff page."]);
+  sheet_(SH.roster).getRange("D:D").setNumberFormat("d mmm yyyy");
+  const tch = sheet_(SH.teachers);
+  if (!tch.getRange("A1").getValue()) {
+    header_(SH.teachers, ["Username", "Password", "Name", "Classes", "Subjects", "Role", "", "How it works"]);
+    tch.getRange("A2:F3").setValues([["laura", "", "Laura Husseiny", "", "", "Leader"],
+      ["example.teacher", "", "Example Teacher", "8A, 8B", "MSC", "Teacher"]]);
+    tch.getRange("H2:H6").setValues([["One row per member of staff. They sign in on the website's Staff page with Username + Password."],
+      ["Leader: sees every class and subject. Teacher: sees only the Classes listed (comma-separated, e.g. 8A, 8B)."],
+      ["Subjects is optional: MSC, Social Studies, Moral Education, Literacy. Leave blank for all subjects."],
+      ["A row with no password can't sign in. Use a different password for each person."],
+      ["Keep this Sheet shared with leaders only: it holds every teacher's password."]]);
+    tch.setColumnWidth(8, 560); tch.setColumnWidth(4, 160); tch.setColumnWidth(5, 200);
+    tch.getRange("F2:F").setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(["Teacher", "Leader"]).build());
+  }
   header_(SH.fixes, ["Name the student typed", "Class", "Correct name (as on Roster)", "",
     "Use when a student typed their name differently. Their results then join the right row."]);
   header_(SH.report, REPORT_HEAD);
@@ -331,7 +405,7 @@ function setup() {
   bandFormatting_();
 
   // Order the tabs
-  [SH.dash, SH.comp, SH.report, SH.results, SH.roster, SH.fixes, SH.settings].forEach((n, i) => {
+  [SH.dash, SH.comp, SH.report, SH.results, SH.roster, SH.teachers, SH.fixes, SH.settings].forEach((n, i) => {
     ss.setActiveSheet(ss.getSheetByName(n)); ss.moveActiveSheet(i + 1); });
   const def = ss.getSheetByName("Sheet1"); if (def && def.getLastRow() === 0) ss.deleteSheet(def);
   ss.setActiveSheet(ss.getSheetByName(SH.dash));

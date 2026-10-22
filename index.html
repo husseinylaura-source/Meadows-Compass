@@ -365,6 +365,19 @@ body.staff .me{display:none}
 .staff-lock input,.sd-filters select,.sd-ph input{font:inherit;font-size:16px;padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);min-width:0}
 .staff-lock input{flex:1 1 200px}
 .sd-msg{min-height:1.4em;color:var(--bad);font-weight:700;font-size:15px}
+.sd-form{display:grid;gap:12px}
+.sd-form label,.sd-inline{display:grid;gap:4px;font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.sd-inline{display:inline-flex;align-items:center;gap:8px}
+.sd-inline select,#lName{font:inherit;font-size:16px;padding:8px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);text-transform:none;letter-spacing:0}
+#lName{flex:1 1 220px;min-width:0}
+.sd-form .btn{justify-self:start}
+.sd-who{font-size:14.5px;margin-top:2px}
+.sd-roster{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px 18px}
+.sd-roster li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);min-width:0}
+.sd-roster li span:first-child{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sd-roster .x{margin-left:auto;border:0;background:transparent;color:var(--muted);font-size:20px;line-height:1;width:32px;height:32px;border-radius:8px;cursor:pointer}
+.sd-roster .x:hover,.sd-roster .x:focus-visible{background:var(--bad-soft);color:var(--bad)}
+.sd-unlisted{display:grid;gap:6px;background:var(--sand-soft);border-radius:12px;padding:12px 14px}
 .sd-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap}
 .sd-head h1{font-size:clamp(28px,4.4vw,42px)}
 .sd-filters{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
@@ -414,7 +427,7 @@ body.staff .me{display:none}
 .sd-empty h2{font-size:clamp(20px,2.6vw,25px)}
 @media (max-width:760px){.sd-filters,.sd-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.bands{grid-template-columns:1fr}}
 @media print{
-  body.staff .topbar,body.staff footer,.sd-actions,.sd-filters,.sd-ph input,.chk,#toast{display:none!important}
+  body.staff .topbar,body.staff footer,.sd-actions,.sd-filters,.sd-ph input,.chk,#toast,#sdLists{display:none!important}
   body.staff{background:#fff;font-size:12px}
   .panel,.kpi{break-inside:avoid;border-color:#ccc}
   .tscroll{overflow:visible}

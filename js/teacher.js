@@ -1,5 +1,7 @@
 /* Meadows Compass – Staff dashboard (#teacher)
-   Reads lesson results from the Google Sheet (js/config.js → resultsUrl) after a staff passcode.
+   Each member of staff signs in with the username and password from the Sheet's Teachers tab.
+   Teachers see only their own classes (and subjects) and can add missing students to their class lists;
+   leaders see everything. Data comes from the Google Sheet in js/config.js → resultsUrl.
    Bands: Below 0–39 · Working towards 40–59 · Meeting 60–79 · Exceeding 80–100 */
 (function(){
 "use strict";
@@ -16,8 +18,12 @@ const bandOf = p => { if(p === "" || p == null || isNaN(p)) return null; let b =
 const pct = n => n === "" || n == null ? "–" : Math.round(n) + "%";
 const ss = { get(k){ try{ return sessionStorage.getItem("mc-staff:"+k); }catch(e){ return null; } },
              set(k,v){ try{ v == null ? sessionStorage.removeItem("mc-staff:"+k) : sessionStorage.setItem("mc-staff:"+k, v); }catch(e){} } };
+const nameKey = s => String(s||"").replace(/\s+/g," ").trim().toLowerCase();
+const tidy = s => String(s||"").replace(/\s+/g," ").trim().split(" ").map(w => /^[a-z]/i.test(w) ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w).join(" ");
 
-let DATA = null, F = null, sortBy = {col:"cls", dir:1}, query = "", onlyMissed = false, loading = false;
+let DATA = null, F = null, sortBy = {col:"cls", dir:1}, query = "", onlyMissed = false, loading = false, listCls = "";
+
+function creds(){ try{ return JSON.parse(ss.get("who") || "null"); }catch(e){ return null; } }
 
 function show(app, crumbs){
   crumbs([["Staff dashboard"]]);
@@ -26,38 +32,48 @@ function show(app, crumbs){
   if(!CFG.resultsUrl && !DATA){ app.innerHTML = `<section class="panel staff-lock"><span class="eyebrow">Staff only</span><h1>Staff dashboard</h1><p>The results Sheet isn't connected yet. Add its web app address to <code>js/config.js</code> (steps in <code>teacher-dashboard/SETUP.md</code>).</p><div class="row"><button class="btn alt" id="sdDemo" type="button">Preview with sample data</button></div></section>`;
     app.querySelector("#sdDemo").onclick = () => { DATA = sample(); F = defaults(DATA); render(app); }; return; }
   if(DATA) return render(app);
-  const code = ss.get("code");
-  if(code) return load(app, code);
+  const c = creds();
+  if(c) return call(app, {action:"data"}, c);
   lock(app);
 }
 
 function lock(app, msg){
   app.innerHTML = `<section class="panel staff-lock">
-    <span class="eyebrow">Staff only</span><h1>Staff dashboard</h1>
-    <p class="small">Lesson completion, term averages and achievement bands for every class.</p>
-    <form id="sdForm" class="row"><label class="sr" for="sdCode">Staff passcode</label>
-      <input id="sdCode" type="password" placeholder="Staff passcode" autocomplete="current-password" required>
-      <button class="btn" type="submit">Open dashboard</button></form>
-    <p class="sd-msg" id="sdMsg" role="status">${esc(msg||"")}</p></section>`;
-  const f = app.querySelector("#sdForm");
-  f.onsubmit = e => { e.preventDefault(); load(app, app.querySelector("#sdCode").value.trim()); };
-  app.querySelector("#sdCode").focus();
+    <span class="eyebrow">Staff only</span><h1>Staff sign in</h1>
+    <p class="small">See lesson completion, term averages and achievement bands for your classes.</p>
+    <form id="sdForm" class="sd-form">
+      <label>Username<input id="sdUser" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+      <label>Password<input id="sdPass" type="password" autocomplete="current-password" required></label>
+      <button class="btn" type="submit">Sign in</button></form>
+    <p class="sd-msg" id="sdMsg" role="status">${esc(msg||"")}</p>
+    <p class="small">No account yet? Ask your Head of Teaching &amp; Learning to add you.</p></section>`;
+  app.querySelector("#sdForm").onsubmit = e => { e.preventDefault();
+    call(app, {action:"data"}, {user: app.querySelector("#sdUser").value.trim(), pass: app.querySelector("#sdPass").value}); };
+  app.querySelector("#sdUser").focus();
 }
 
-async function load(app, code){
+/* Every request to the Sheet: sign in, load data, add or remove a student. */
+async function call(app, body, who){
   if(loading) return; loading = true;
-  const m = app.querySelector("#sdMsg"); if(m) m.textContent = "Loading…";
+  who = who || creds();
+  const m = app.querySelector("#sdMsg"); if(m) m.textContent = "Signing in…";
   if(DATA) setBusy(app, true);
   try{
-    const r = await fetch(CFG.resultsUrl + (CFG.resultsUrl.indexOf("?") >= 0 ? "&" : "?") + "code=" + encodeURIComponent(code), {cache:"no-store"});
+    const r = await fetch(CFG.resultsUrl, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify(Object.assign({}, body, {user: who && who.user, pass: who && who.pass}))});
     const d = await r.json();
-    if(!d.ok){ ss.set("code", null); DATA = null; loading = false; return lock(app, d.message || "Couldn't open the dashboard."); }
-    ss.set("code", code); DATA = d; loading = false;
+    loading = false;
+    if(!d.ok){
+      if(DATA && d.error === "denied" || DATA && d.error === "bad"){ setBusy(app, false); return toast(d.message); }
+      ss.set("who", null); DATA = null; F = null; return lock(app, d.message || "Couldn't sign in.");
+    }
+    ss.set("who", JSON.stringify(who)); DATA = d;
     if(!F) F = defaults(d);
     render(app);
+    if(d.message) toast(d.message);
   }catch(e){
     loading = false;
-    if(DATA){ setBusy(app, false); toast("Couldn't refresh. Check the connection."); }
+    if(DATA){ setBusy(app, false); toast("Couldn't reach the Sheet. Check the connection."); }
     else lock(app, "Couldn't reach the results Sheet. Check the connection, or that the web app is deployed for Anyone.");
   }
 }
@@ -69,7 +85,45 @@ function currentTerm(terms){
   ["Term 1","Term 2","Term 3"].forEach(x => { if(terms && terms[x] && today >= terms[x]) t = x; });
   return t;
 }
-function defaults(d){ return {term: currentTerm(d.terms), year:"All", cls:"All", subject:"All"}; }
+function defaults(d){ const subs = d.me && d.me.subjects || [];
+  return {term: currentTerm(d.terms), year:"All", cls:"All", subject: subs.length === 1 ? subs[0] : "All"}; }
+
+/* Class lists: the students on each of the teacher's classes, with add / remove. */
+function myClasses(){ return (DATA.me && DATA.me.classes) || []; }
+function classLists(){
+  const mine = myClasses();
+  if(!mine.length) return `<div class="sd-ph"><h2>Class lists</h2></div><p class="small">${DATA.me && DATA.me.role === "leader" ? "No class lists yet. Paste them into the Roster tab of the Sheet." : "No classes are linked to your account yet. Ask your Head of Teaching &amp; Learning to add them on the Teachers tab."}</p>`;
+  if(!mine.includes(listCls)) listCls = mine.includes(F.cls) ? F.cls : mine[0];
+  const list = (DATA.roster || {})[listCls] || [];
+  const onList = new Set(list.map(x => nameKey(x.name)));
+  const unlisted = [...new Set(DATA.groups.filter(g => g.cls === listCls).flatMap(g => g.students.filter(s => !s.onRoster && !onList.has(nameKey(s.name))).map(s => s.name)))].sort();
+  const me = DATA.me || {};
+  const canRemove = x => me.role === "leader" || (x.addedBy && x.addedBy === me.user);
+  return `<div class="sd-ph"><h2>Class lists</h2><span class="small">Students on the list appear on the dashboard even before they send any work.</span></div>
+    <div class="row"><label class="sd-inline">Class <select id="lCls">${options(mine, listCls)}</select></label><span class="small">${list.length} student${list.length===1?"":"s"}</span></div>
+    ${unlisted.length ? `<div class="sd-unlisted"><b>Sending work but not on the ${esc(listCls)} list</b><span class="small">Add them if they're in this class. If it's a misspelling of a listed student, ask a leader to link the name.</span>
+      <div class="row">${unlisted.map(n => `<button class="btn sm alt" type="button" data-add="${esc(n)}">+ ${esc(n)}</button>`).join("")}</div></div>` : ""}
+    <ul class="sd-roster">${list.map(x => `<li><span>${esc(x.name)}</span>${x.addedBy ? `<span class="small">added${x.addedBy === me.user ? " by you" : ""}</span>` : ""}${canRemove(x) ? `<button class="x" type="button" data-rm="${esc(x.name)}" aria-label="Remove ${esc(x.name)} from ${esc(listCls)}" title="Remove">×</button>` : ""}</li>`).join("") || `<li class="small">No students on this list yet.</li>`}</ul>
+    <form id="lAdd" class="row"><label class="sr" for="lName">Student's full name</label><input id="lName" type="text" placeholder="Student's full name" autocomplete="off" maxlength="80" required><button class="btn" type="submit">Add to ${esc(listCls)}</button></form>`;
+}
+function wireLists(app){
+  const box = app.querySelector("#sdLists"); if(!box || !box.querySelectorAll) return;
+  const sel = app.querySelector("#lCls"); if(sel) sel.onchange = e => { listCls = e.target.value; box.innerHTML = classLists(); wireLists(app); };
+  const add = name => change(app, "addStudent", name), rm = name => { if(confirm(`Remove ${name} from ${listCls}?`)) change(app, "removeStudent", name); };
+  const f = app.querySelector("#lAdd"); if(f) f.onsubmit = e => { e.preventDefault(); const v = app.querySelector("#lName").value.trim(); if(v) add(v); };
+  box.querySelectorAll("[data-add]").forEach(b => b.onclick = () => add(b.dataset.add));
+  box.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => rm(b.dataset.rm));
+}
+function change(app, action, name){
+  if(!DATA.sample) return call(app, {action, cls: listCls, name});
+  const L = DATA.roster[listCls] = DATA.roster[listCls] || [], n = tidy(name);   // preview only: change the sample in the browser
+  if(action === "addStudent"){ if(L.some(x => nameKey(x.name) === nameKey(n))) return toast(n + " is already on the list.");
+    L.push({name:n, addedBy:DATA.me.user}); L.sort((a,b) => a.name.localeCompare(b.name)); }
+  else DATA.roster[listCls] = L.filter(x => nameKey(x.name) !== nameKey(n));
+  DATA.groups.forEach(g => { if(g.cls !== listCls) return; g.students.forEach(s => s.onRoster = DATA.roster[listCls].some(x => nameKey(x.name) === nameKey(s.name)));
+    if(action === "addStudent" && !g.students.some(s => nameKey(s.name) === nameKey(n))) g.students.push({name:n, onRoster:true, done:{}}); });
+  render(app); toast(action === "addStudent" ? n + " added to " + listCls + "." : n + " removed from " + listCls + ".");
+}
 
 /* One row per student per class and subject in the chosen filters */
 function rows(){
@@ -118,12 +172,13 @@ function render(app){
   app.innerHTML = `
   <section class="sd-head">
     <div><span class="eyebrow">Staff dashboard${DATA.sample ? ` · <span class="flag">Sample data – not real students</span>` : ""}</span><h1>Progress &amp; achievement</h1>
-      <p class="small" id="sdScope">${esc(scope)} · updated ${upd.toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</p></div>
+      <p class="small" id="sdScope">${esc(scope)} · updated ${upd.toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</p>
+      ${DATA.me ? `<p class="sd-who">Signed in as <b>${esc(DATA.me.name)}</b> · ${DATA.me.role === "leader" ? "Leader: all classes" : esc((DATA.me.classes.join(", ") || "no classes yet") + (DATA.me.subjects.length ? " · " + DATA.me.subjects.join(", ") : ""))}</p>` : ""}</div>
     <div class="row sd-actions">
       <button class="btn sm alt" id="sdRefresh" type="button">Refresh</button>
       <button class="btn sm alt" id="sdCsv" type="button">Download CSV</button>
       <button class="btn sm" id="sdPrint" type="button">Print report</button>
-      <button class="btn sm alt" id="sdLock" type="button" title="Sign out of the staff dashboard">Lock</button>
+      <button class="btn sm alt" id="sdLock" type="button">Sign out</button>
     </div>
   </section>
 
@@ -131,7 +186,7 @@ function render(app){
     <label>Term<select id="fTerm">${options(["Term 1","Term 2","Term 3"], F.term)}</select></label>
     <label>Year group<select id="fYear">${options(years, F.year, "All year groups")}</select></label>
     <label>Class<select id="fCls">${options(classes, F.cls, "All classes")}</select></label>
-    <label>Subject<select id="fSub">${options(SUBJECTS, F.subject, "All subjects")}</select></label>
+    <label>Subject<select id="fSub">${options(DATA.me && DATA.me.subjects.length ? DATA.me.subjects : SUBJECTS, F.subject, DATA.me && DATA.me.subjects.length === 1 ? "" : "All subjects")}</select></label>
   </section>
 
   ${R.length ? `
@@ -161,15 +216,17 @@ function render(app){
         <label class="chk"><input id="sdMissed" type="checkbox" ${onlyMissed?"checked":""}> Missed a lesson</label></div></div>
     <div class="tscroll"><table class="sd-table" id="sdTable"></table></div>
   </section>` : `
-  <section class="panel sd-empty"><h2>No results yet for ${esc(scope)}</h2><p class="small">Results appear once students in these classes work through a lesson with their name and class filled in. Try another term or class.</p></section>`}`;
+  <section class="panel sd-empty"><h2>No results yet for ${esc(scope)}</h2><p class="small">Results appear once students in these classes work through a lesson with their name and class filled in. Try another term or class.</p></section>`}
+  <section class="panel" id="sdLists">${classLists()}</section>`;
 
   const $ = s => app.querySelector(s);
   $("#fTerm").onchange = e => { F.term = e.target.value; render(app); };
   $("#fYear").onchange = e => { F.year = e.target.value; F.cls = "All"; render(app); };
   $("#fCls").onchange = e => { F.cls = e.target.value; render(app); };
   $("#fSub").onchange = e => { F.subject = e.target.value; render(app); };
-  $("#sdRefresh").onclick = () => DATA.sample ? render(app) : load(app, ss.get("code") || "");
-  $("#sdLock").onclick = () => { ss.set("code", null); const wasSample = DATA.sample; DATA = null; F = null; wasSample ? show(app, () => {}) : lock(app); };
+  $("#sdRefresh").onclick = () => DATA.sample ? render(app) : call(app, {action:"data"});
+  $("#sdLock").onclick = () => { ss.set("who", null); const wasSample = DATA.sample; DATA = null; F = null; listCls = ""; wasSample ? show(app, () => {}) : lock(app); };
+  wireLists(app);
   $("#sdPrint").onclick = () => window.print();
   $("#sdCsv").onclick = () => csv(R);
   if(R.length){
@@ -246,9 +303,15 @@ function sample(){
     return {term:"Term 1", year, cls, subject, lessons, students}; };
   const msc = ["Healthy lifestyles","Media and me","Rights and duties","Giving in the UAE","Community heroes"];
   const lit = ["Unit 1 Week 1 READ","Unit 1 Week 1 WORDS","Unit 1 Week 1 WRITE","Unit 1 Week 2 READ"];
-  return {ok:true, sample:true, updated:new Date().toISOString(), zeroForMissed:false,
+  const groups = [mk("7A","MSC",msc,16), mk("7B","MSC",msc,15), mk("7A","Literacy",lit,16)];   // a teacher of 7A and 7B
+  const roster = {};
+  groups.forEach(g => { const L = roster[g.cls] = roster[g.cls] || []; g.students.forEach(s => { if(!L.some(x => x.name === s.name)) L.push({name:s.name, addedBy:""}); }); });
+  Object.values(roster).forEach(L => L.sort((a,b) => a.name.localeCompare(b.name)));
+  groups[0].students.push({name:"Yusuf Al Amri", onRoster:false, done:{l0:[64,1,"10/10"], l1:[58,0,"6/10"]}});
+  return {ok:true, sample:true, updated:new Date().toISOString(), zeroForMissed:false, roster, groups,
+    me:{user:"sample", name:"Sample Teacher", role:"teacher", classes:["7A","7B"], subjects:[]},
     terms:{"Term 1":"2000-01-01","Term 2":"2999-01-01","Term 3":"2999-06-01"},
-    groups:[mk("7A","MSC",msc,16), mk("7B","MSC",msc,15), mk("7A","Literacy",lit,16), mk("8A","MSC",msc.slice(0,4),17), mk("8B","Literacy",lit,14)]};
+  };
 }
 
 window.Teacher = { show, leave(){ document.body.classList.remove("staff"); } };

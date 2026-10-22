@@ -1,4 +1,4 @@
-/* Meadows Compass – lesson results for the teacher dashboard.
+/* EduGhaf – lesson results for the teacher dashboard.
    Works out each lesson's % and sends it (with the student's M Number, name and class) to the Google Sheet
    set in js/config.js. Answers stay on the student's device; only scores are sent.
 

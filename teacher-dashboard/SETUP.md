@@ -29,7 +29,7 @@ Islamic, Literacy/ Islamic Teacher):
   aren't theirs under **My students**; that removes them from her list only.
 
 ## 1. Make the Sheet
-1. In your **school** Google account, create a blank Google Sheet called "Meadows Compass – Teacher Dashboard".
+1. In your **school** Google account, create a blank Google Sheet called "EduGhaf – Teacher Dashboard".
    You need to be able to open the master student list with the same account.
 2. **Extensions → Apps Script.** Delete what's there, paste everything from `Code.gs`, click **Save**.
 3. Choose **setup** in the function box, click **Run**, and allow the permissions it asks for (it needs to read the
@@ -40,7 +40,7 @@ Islamic, Literacy/ Islamic Teacher):
 
 ## 2. Switch on receiving results
 1. Apps Script: **Deploy → New deployment →** gear icon **→ Web app**. Execute as **Me**, access **Anyone**. **Deploy**.
-2. Copy the **Web app URL** (ends in `/exec`). Opening it should say "Meadows Compass results endpoint is running."
+2. Copy the **Web app URL** (ends in `/exec`). Opening it should say "EduGhaf results endpoint is running."
 
 ## 3. Connect the website
 Put the URL in `js/config.js` (`resultsUrl: "…/exec"`) and upload it, or send it to whoever maintains the site.

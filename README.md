@@ -1,4 +1,4 @@
-# Meadows Compass
+# EduGhaf
 
 Interactive lessons for Emirates International School – Meadows (2026–27):
 MSC (Years 7–10), Social Studies (Years 7–10), Moral Education (Years 7–13) and Literacy (Years 7–11).

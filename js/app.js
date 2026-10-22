@@ -1,4 +1,4 @@
-/* Meadows Compass · app logic. Data lives in /data, pictures in js/art.js and /images, videos in data/videos.js. */
+/* EduGhaf · app logic. Data lives in /data, pictures in js/art.js and /images, videos in data/videos.js. */
 (function(){
 "use strict";
 const SS = window.SS_DATA||{}, MSC = window.MSC_DATA||{}, ME = window.ME_DATA||{}, LIT = window.LIT||{}, LITC = window.LIT_CONTENT||{}, VIDEOS = window.VIDEOS||{}, ART = window.ART||{};
@@ -61,7 +61,7 @@ const words=s=>String(s||"").split(",").map(w=>w.trim()).filter(Boolean);
 
 /* ---------- router ---------- */
 window.addEventListener("hashchange",route);
-function crumbs(parts){$("#crumbs").innerHTML=`<a class="brand" href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 8.5 13.4 13.4 8.5 15.5 10.6 10.6z" fill="var(--ta)" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>Meadows Compass</a>`+parts.map(p=>`<span class="sep">›</span>`+(p[1]?`<a href="#${p[1]}">${esc(p[0])}</a>`:`<span>${esc(p[0])}</span>`)).join("")}
+function crumbs(parts){$("#crumbs").innerHTML=`<a class="brand" href="#" aria-label="EduGhaf home"><svg viewBox="20 40 160 130" aria-hidden="true"><path d="M34 98 C34 68 66 50 100 50 C134 50 166 68 166 98 C154 91 143 96 131 90 C120 97 111 92 100 97 C89 92 80 97 69 90 C57 96 46 91 34 98 Z" fill="var(--ghaf)"/><path d="M100 148 C100 126 91 112 76 101 M100 148 C100 126 109 112 124 101 M100 130 L100 97" fill="none" stroke="var(--ghaf)" stroke-width="8" stroke-linecap="round"/><path d="M26 150 Q63 134 100 150 Q137 134 174 150 L174 164 Q137 148 100 164 Q63 148 26 164 Z" fill="var(--ghafsand)"/></svg><span><span class="b-edu">Edu</span>Ghaf</span></a>`+parts.map(p=>`<span class="sep">›</span>`+(p[1]?`<a href="#${p[1]}">${esc(p[0])}</a>`:`<span>${esc(p[0])}</span>`)).join("")}
 function route(){
   clearInterval(route._tick);const h=(location.hash||"").slice(1);const app=$("#app");app.removeAttribute("data-unit");LANG="en";app.removeAttribute("dir");app.removeAttribute("lang");window.scrollTo(0,0);let m;
   window.Teacher&&Teacher.leave();

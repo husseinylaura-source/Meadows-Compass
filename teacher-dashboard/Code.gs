@@ -1,5 +1,5 @@
 /**
- * Meadows Compass – Teacher Dashboard (Google Sheets + Apps Script)
+ * EduGhaf – Teacher Dashboard (Google Sheets + Apps Script)
  *
  * Students identify themselves on the website with their M Number. Each lesson result is sent here.
  * The student and teacher lists are read from the school's master Sheet (Settings → Student list Sheet):
@@ -77,7 +77,7 @@ function band(pct) {
 /* ================= web endpoints ================= */
 
 function doGet() {
-  return ContentService.createTextOutput("Meadows Compass results endpoint is running.");
+  return ContentService.createTextOutput("EduGhaf results endpoint is running.");
 }
 
 function doPost(e) {
@@ -531,7 +531,7 @@ function buildCompletion_(groups) {
   const term = String(SpreadsheetApp.getActive().getSheetByName(SH.dash).getRange("B4").getValue() || "Term 1");
   const sh = sheet_(SH.comp);
   sh.clear(); sh.clearNotes();
-  sh.getRange(1, 1).setValue("Lesson completion · " + term + "  (change the term on the Dashboard, then Meadows Compass → Refresh dashboard)")
+  sh.getRange(1, 1).setValue("Lesson completion · " + term + "  (change the term on the Dashboard, then EduGhaf → Refresh dashboard)")
     .setFontWeight("bold").setFontSize(12);
   sh.getRange(2, 1).setValue("Each cell is the lesson %. — means not attempted yet. Italic means started but not finished (hover for steps done).")
     .setFontColor("#555555");
@@ -640,7 +640,7 @@ function hourlyImport() { try { importLists(); } catch (err) { setSetting_("Last
 function buildDashboard_() {
   const d = sheet_(SH.dash);
   d.clear();
-  d.getRange("A1").setValue("Meadows Compass · Teacher Dashboard").setFontSize(16).setFontWeight("bold");
+  d.getRange("A1").setValue("EduGhaf · Teacher Dashboard").setFontSize(16).setFontWeight("bold");
   d.getRange("A2").setValue("Choose a term, year group, class, subject and teacher. Results update every 10 minutes.").setFontColor("#555555");
   d.getRange("A4:A8").setValues([["Term"], ["Year group"], ["Class"], ["Subject"], ["Teacher"]]).setFontWeight("bold");
   d.getRange("B4:B8").setValues([["Term 1"], ["All"], ["All"], ["All"], ["All"]]).setBackground("#fff8e1").setFontWeight("bold");
@@ -696,7 +696,7 @@ function bandFormatting_() {
 /* ================= menu ================= */
 
 function onOpen() {
-  SpreadsheetApp.getUi().createMenu("Meadows Compass")
+  SpreadsheetApp.getUi().createMenu("EduGhaf")
     .addItem("Refresh dashboard", "refresh")
     .addItem("Import students and teachers now", "importLists")
     .addItem("Rebuild layout (keeps all data)", "setup")

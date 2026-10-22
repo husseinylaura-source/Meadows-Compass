@@ -1,4 +1,4 @@
-/* Meadows Compass – Staff dashboard (#teacher)
+/* EduGhaf – Staff dashboard (#teacher)
    Each member of staff signs in with the username and password from the Sheet's Teachers tab.
    Teachers see only the students linked to their teacher code (from the school's master list) and can add
    missing students; leaders see everything and manage logins. Students are identified by M Number. Data comes from the Google Sheet in js/config.js → resultsUrl.
@@ -311,7 +311,7 @@ function csv(R){
   const lines = [head].concat(R.map(r => [F.term, r.year, r.cls, r.subject, r.m, r.name, r.onRoster ? "Yes" : "Check M Number", r.set, r.attempted, r.completed,
     Math.round(r.completion), r.avg, bandOf(r.avg) ? bandOf(r.avg).name : "No work yet", r.missed.map(l => l.title).join(" · ")])).map(r => r.map(q).join(","));
   const blob = new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
-  const name = ["Meadows-Compass", F.term, F.cls === "All" ? (F.year === "All" ? "all-years" : F.year) : F.cls, F.subject === "All" ? "all-subjects" : F.subject].join("_").replace(/\s+/g,"-") + ".csv";
+  const name = ["EduGhaf", F.term, F.cls === "All" ? (F.year === "All" ? "all-years" : F.year) : F.cls, F.subject === "All" ? "all-subjects" : F.subject].join("_").replace(/\s+/g,"-") + ".csv";
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
@@ -385,7 +385,7 @@ function wireStaff(app){
     editing = {orig:a.user, name:a.name, user:a.user, code:a.code, role:a.role, classes:a.classes.slice(), hasPass:a.hasPass, pass: a.hasPass ? "" : genPass()}; again(); });
   box.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { const a = DATA.staff.find(x => x.user === b.dataset.del);
     if(confirm(`Delete the login for ${a.name || a.user}? They won't be able to sign in. Their students and results stay.`)) saveAccount(app, "deleteStaff", {username: a.user}); });
-  const cp = q("#acCopy"); if(cp) cp.onclick = () => { const t = `Meadows Compass staff login\n${location.href.split("#")[0]}#teacher\nUsername: ${issued.user}\nPassword: ${issued.pass}`;
+  const cp = q("#acCopy"); if(cp) cp.onclick = () => { const t = `EduGhaf staff login\n${location.href.split("#")[0]}#teacher\nUsername: ${issued.user}\nPassword: ${issued.pass}`;
     try{ navigator.clipboard.writeText(t).then(() => toast("Login copied."), () => toast("Couldn't copy. Select and copy the text instead.")); }catch(e){ toast("Couldn't copy. Select and copy the text instead."); } };
   const dn = q("#acDone"); if(dn) dn.onclick = () => { issued = null; again(); };
   const f = q("#acForm"); if(!f || !editing) return;

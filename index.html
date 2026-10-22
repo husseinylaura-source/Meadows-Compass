@@ -127,6 +127,15 @@ button{font:inherit;color:inherit;cursor:pointer}
 .cover .meta .chip{background:var(--surface)}
 .cover svg{width:100%;height:auto;max-width:100%}
 @media (max-width:700px){.cover{grid-template-columns:1fr}}
+.gate{max-width:560px;margin:4vh auto 0}
+.gate h1{font-size:clamp(28px,4.4vw,40px)}
+.gate-form{display:grid;gap:14px}
+.gate-form label{display:grid;gap:4px;font-weight:700}
+.gate-form label .small{font-weight:400}
+.gate-form input,.gate-form select{font:inherit;font-size:17px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);min-width:0}
+.gate-form #gM{text-transform:uppercase;max-width:220px}
+.gate-form .btn{justify-self:start}
+.gate-msg{min-height:1.4em;color:var(--bad);font-weight:700;font-size:15px}
 .notebar{background:var(--sand-soft);border:1.5px solid var(--sand);border-radius:12px;padding:10px 14px;font-size:15px}
 
 .clock{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:8px 12px;box-shadow:0 6px 18px -14px rgba(0,0,0,.4)}

@@ -67,6 +67,7 @@ function route(){
   window.Teacher&&Teacher.leave();
   if(h==="teacher")return window.Teacher?Teacher.show(app,crumbs):home(app);
   if(!h)return home(app);
+  if((m=h.match(/^y(\d+)-(?:(?:msc|ss)-w\d+|me-l\d+|lit-u\d-w\d-(?:read|words|write))$/))&&YEARS[+m[1]]&&!signedIn(+m[1]))return gate(app,+m[1]);
   if((m=h.match(/^y(\d+)$/)))return yearPage(app,+m[1]);
   if((m=h.match(/^y(\d+)-(msc|ss|me)$/)))return subjectPage(app,+m[1],m[2]);
   if((m=h.match(/^y(\d+)-(msc|ss)-(w\d+)$/)))return mscLesson(app,+m[1],m[3],m[2]);
@@ -76,6 +77,26 @@ function route(){
   if((m=h.match(/^y(\d+)-lit-u(\d)-w(\d)-(read|words|write)$/)))return litLesson(app,+m[1],+m[2],+m[3],m[4]);
   home(app);
 }
+
+/* ---------- before a lesson: M Number and class are required ---------- */
+const okM=v=>/^M?\d{3,7}$/i.test(String(v||"").replace(/\s+/g,""));
+function signedIn(y){return okM(me.mno)&&YEARS[y].classes.includes(me.cls)}
+function gate(app,y){const Y=YEARS[y];crumbs([["Year "+y,"y"+y],["Before you start"]]);
+  const bad=me.cls&&!Y.classes.includes(me.cls);
+  app.innerHTML=`<section class="panel gate"><span class="eyebrow">Year ${y} · Before you start</span>
+    <h1>Enter your M Number</h1><p class="small">Your teacher uses your M Number to see your progress. You can't start the lesson without it.<br><span lang="ar" dir="rtl">اكتب رقمك المدرسي (M Number) واختر صفّك قبل أن تبدأ الدرس.</span></p>
+    <form id="gForm" class="gate-form" novalidate>
+      <label>M Number <span class="small">on your ID card or ManageBac, e.g. M9093</span><input id="gM" type="text" value="${esc(me.mno||"")}" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="9" required></label>
+      <label>Class<select id="gCls" required><option value="">Choose your class</option>${Y.classes.map(c=>`<option ${c===me.cls?"selected":""}>${c}</option>`).join("")}</select></label>
+      <label>Name <span class="small">for your hand-in</span><input id="gName" type="text" value="${esc(me.name||"")}" autocomplete="off" maxlength="80" placeholder="Your full name"></label>
+      <p class="gate-msg" id="gMsg" role="alert">${bad?`You chose class ${esc(me.cls)}, but this is a Year ${y} lesson. Choose your Year ${y} class.`:""}</p>
+      <button class="btn" type="submit">Start the lesson →</button></form></section>`;
+  const f=$("#gForm"),mi=$("#gM");if(!okM(me.mno))mi.focus();
+  f.onsubmit=e=>{e.preventDefault();const v=mi.value.toUpperCase().replace(/\s+/g,""),c=$("#gCls").value,msg=$("#gMsg");
+    if(!okM(v)){msg.textContent="Type your M Number: the letter M and then the numbers, e.g. M9093.";mi.focus();return}
+    if(!c){msg.textContent="Choose your class.";$("#gCls").focus();return}
+    me.mno="M"+v.replace(/^M/,"");me.cls=c;const n=$("#gName").value.trim();if(n)me.name=n;store.set("me",me);
+    window.Results&&Results.identityChanged();setupMe();route()}}
 
 /* ---------- pages ---------- */
 function home(app){

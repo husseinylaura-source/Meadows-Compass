@@ -51,10 +51,19 @@ const NONE = { name: "No work yet", bg: "#eeeeee", fg: "#555555" };
 const KNOWN_NAMES = { SAY: "Sara Ayoub", PLO: "Premraj Loganathan", AZE: "Aiman Zein", RKH: "Rasha Khasawneh",
   LHU: "Laura Husseiny", EPU: "Emel Punar", AIS: "Abeer Issa", FNA: "Fardoos Nagi", AEL: "Amany Elgwely",
   MAL: "Mariam Aldaouk", RAL: "Raj Alrahman", RKA: "Ruby Kaur", ANE: "Ashley New", NQU: "Naveed Qureshi",
-  RZE: "Rida Zein", MEL: "Marwa Elgamel" };
-/* Classes a teacher sees whole, when the master list doesn't cover them (from the 2026–27 timetable:
-   Years 12–13 Moral Education is taught by MEL and RZE). Used when their login is first created. */
-const WHOLE_CLASSES = { MEL: "12A, 12B, 12C, 12D, 13A, 13B, 13C, 13D", RZE: "12A, 12B, 12C, 12D, 13A, 13B, 13C, 13D" };
+  RZE: "Rida Zein", MEL: "Marwa Elgamel", CYO: "Chelsea Young", RRA: "Raj Rahman" };
+/* Shared lists: every student in these years and subjects is given to all these teachers (2026–27 timetable:
+   Years 12–13 Moral Education is taught by MEL and RZE). Each teacher removes the students who aren't theirs.
+   Students are added when they appear in the master list or when their first result arrives. */
+const SHARED = { 12: { "Moral Education": ["MEL", "RZE"] }, 13: { "Moral Education": ["MEL", "RZE"] } };
+const SHARED_SOURCE = "Shared list";
+const sharedCodes_ = (cls, subject) => ((SHARED[parseInt(cls, 10)] || {})[subject]) || null;
+function sharedRow_(m, name, cls, subject, codes) {
+  const row = ROSTER_HEAD.map(() => "");
+  row[RO["M Number"]] = m; row[RO.Student] = name; row[RO.Class] = cls; row[RO[subject]] = codes.join(", ");
+  row[RO.Source] = SHARED_SOURCE; row[RO["Added on"]] = new Date();
+  return row;
+}
 const MASTER_DEFAULT = "https://docs.google.com/spreadsheets/d/1RL6aYKfV2GdSI9vmed7Gw8RHkB2K6mKLxcW3NQpJtGc/edit";
 
 function band(pct) {
@@ -82,6 +91,8 @@ function doPost(e) {
   try {
     const known = rosterIndex_()[clean.mno];
     const cls = known ? known.cls : clean.cls;
+    const shared = sharedCodes_(cls, clean.subjectName);
+    if (shared && !(known && (known.has[clean.subjectName]))) sheet_(SH.roster).appendRow(sharedRow_(clean.mno, known ? known.name : clean.student, cls, clean.subjectName, shared));
     const name = known ? known.name : clean.student;
     const sh = sheet_(SH.results);
     const key = clean.mno + "|" + clean.lessonKey;
@@ -145,12 +156,15 @@ function rosterIndex_() {
     const m = mNumber_(r[RO["M Number"]]); if (!m) return;
     const src = String(r[RO.Source] || "");
     const isMaster = /^master/i.test(src);
-    const st = idx[m] = idx[m] || { m, name: "", cls: "", section: "", subj: {}, added: [] };
+    const st = idx[m] = idx[m] || { m, name: "", cls: "", section: "", subj: {}, added: [], has: {}, shared: {} };
+    const isShared = src === SHARED_SOURCE;
     if (isMaster || !st.name) { st.name = tidyName_(r[RO.Student]) || st.name; st.cls = String(r[RO.Class] || st.cls).toUpperCase(); st.section = String(r[RO.Section] || st.section); }
     SUBJECTS.forEach(s => {
       const c = codes_(r[RO[s]]);
       if (c.length) st.subj[s] = unique_((st.subj[s] || []).concat(c));
-      if (!isMaster && c.length) st.added.push({ subject: s, by: src.replace(/^added by\s*/i, "").toLowerCase(), codes: c });
+      if (c.length) st.has[s] = true;
+      if (isShared && r[RO[s]] !== "") { st.has[s] = true; st.shared[s] = true; }
+      else if (!isMaster && c.length) st.added.push({ subject: s, by: src.replace(/^added by\s*/i, "").toLowerCase(), codes: c });
     });
   });
   return idx;
@@ -201,6 +215,11 @@ function importLists() {
   try {
     // Keep students that teachers added, replace master rows
     const kept = rows_(SH.roster).filter(r => !/^master/i.test(String(r[RO.Source] || ""))).map(r => ROSTER_HEAD.map((h, i) => r[i] == null ? "" : r[i]));
+    const haveShared = {}; kept.forEach(r => { if (r[RO.Source] === SHARED_SOURCE) SUBJECTS.forEach(x => { if (r[RO[x]] !== "") haveShared[mNumber_(r[RO["M Number"]]) + "|" + x] = 1; }); });
+    students.forEach(r => SUBJECTS.forEach(x => {
+      const sc = sharedCodes_(r[RO.Class], x);
+      if (sc && !codes_(r[RO[x]]).length && !haveShared[r[RO["M Number"]] + "|" + x]) kept.push(sharedRow_(r[RO["M Number"]], r[RO.Student], r[RO.Class], x, sc));
+    }));
     const all = students.concat(kept);
     const sh = sheet_(SH.roster);
     sh.getRange(2, 1, Math.max(1, sh.getMaxRows() - 1), ROSTER_HEAD.length).clearContent();
@@ -211,8 +230,10 @@ function importLists() {
     const tch = sheet_(SH.teachers), have = {};
     rows_(SH.teachers).forEach(r => { have[String(r[TE.Username]).trim().toLowerCase()] = 1; codes_(r[TE.Code]).forEach(c => have["#" + c] = 1); });
     const used = {}; students.forEach(s => SUBJECTS.forEach((x, i) => codes_(s[4 + i]).forEach(c => used[c] = 1)));
+    Object.keys(SHARED).forEach(y => Object.keys(SHARED[y]).forEach(x => SHARED[y][x].forEach(c => used[c] = 1)));
+    Object.keys(KNOWN_NAMES).forEach(c => used[c] = 1);   // e.g. teachers on the timetable not yet in the master list
     const add = Object.keys(used).concat(Object.keys(legend)).filter((c, i, a) => a.indexOf(c) === i && !have["#" + c] && !have[c.toLowerCase()]).sort()
-      .map(c => [c.toLowerCase(), "", KNOWN_NAMES[c] || legend[c] || c, c, WHOLE_CLASSES[c] || "", "Teacher"]);
+      .map(c => [c.toLowerCase(), "", KNOWN_NAMES[c] || legend[c] || c, c, "", "Teacher"]);
     if (add.length) tch.getRange(tch.getLastRow() + 1, 1, add.length, TEACHER_HEAD.length).setValues(add);
   } finally { lock.releaseLock(); }
   setSetting_("Last import", Utilities.formatDate(new Date(), "Asia/Dubai", "d MMM yyyy, HH:mm") + " · " + students.length + " students");
@@ -259,10 +280,15 @@ function studentChange_(who, d) {
     sh.appendRow(row);
     return { message: name + " added to your " + subject + " list" + (who.role === "leader" && code !== who.code ? " for " + code : "") + "." };
   }
-  // remove: only rows added on the website; teachers only their own
+  // remove: shared lists drop only this teacher; otherwise only rows added on the website (teachers: their own)
   const v = sh.getRange(2, 1, Math.max(1, sh.getLastRow() - 1), ROSTER_HEAD.length).getValues();
   for (let i = v.length - 1; i >= 0; i--) {
     const r = v[i], src = String(r[RO.Source] || "");
+    if (src === SHARED_SOURCE && mNumber_(r[RO["M Number"]]) === m && codes_(r[RO[subject]]).indexOf(code) >= 0) {
+      const left = codes_(r[RO[subject]]).filter(c => c !== code);
+      sh.getRange(i + 2, RO[subject] + 1).setValue(left.length ? left.join(", ") : "—");   // "—" keeps the row so it isn't re-added
+      return { message: (known && known.name || m) + " removed from " + (who.role === "leader" && code !== who.code ? code + "'s " : "your ") + subject + " list." };
+    }
     if (mNumber_(r[RO["M Number"]]) !== m || /^master/i.test(src) || codes_(r[RO[subject]]).indexOf(code) < 0) continue;
     if (who.role !== "leader" && src.replace(/^added by\s*/i, "").toLowerCase() !== who.user) continue;
     sh.deleteRow(i + 2);
@@ -388,7 +414,7 @@ function dataFor_(who) {
       if (!sees_(who, st, st.cls, s)) return;
       const add = st.added.filter(a => a.subject === s);
       mine.push({ m, name: st.name, cls: st.cls, subject: s, teachers: st.subj[s],
-        addedBy: add.length ? add[0].by : "" });
+        addedBy: add.length ? add[0].by : "", shared: !!st.shared[s] });
     });
   });
   mine.sort((a, b) => classSort_(a.cls, b.cls) || SUBJECTS.indexOf(a.subject) - SUBJECTS.indexOf(b.subject) || a.name.localeCompare(b.name));

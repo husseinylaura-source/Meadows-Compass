@@ -105,14 +105,14 @@ function classLists(){
   const onList = new Set(list.map(x => x.m));
   const unlisted = []; DATA.groups.filter(g => g.cls === listCls && g.subject === listSub).forEach(g => g.students.forEach(st => {
     if(!st.onRoster && !onList.has(st.m) && !unlisted.some(u => u.m === st.m)) unlisted.push(st); }));
-  const canRemove = x => x.addedBy && (me.role === "leader" || x.addedBy === me.user);
+  const canRemove = x => (x.shared && me.code && (x.teachers || []).includes(me.code)) || (x.addedBy && (me.role === "leader" || x.addedBy === me.user));
   const codes = [...new Set((DATA.staff || []).map(a => a.code).filter(Boolean))].sort();
   return `<div class="sd-ph"><h2>${title}</h2><span class="small">${me.role === "leader" ? "Every student from the school list, by class and subject." : "The students linked to your teacher code" + (me.code ? " (" + esc(me.code) + ")" : "") + ". They appear on your dashboard even before they send any work."}</span></div>
     <div class="row"><label class="sd-inline">Class <select id="lCls">${options(mine, listCls)}</select></label>
       <label class="sd-inline">Subject <select id="lSub">${options(subs, listSub)}</select></label><span class="small">${list.length} student${list.length===1?"":"s"}</span></div>
     ${unlisted.length ? `<div class="sd-unlisted"><b>Sending ${esc(listSub)} work in ${esc(listCls)}, but their M Number isn't on the school list</b><span class="small">Add them if they're yours. If the M Number looks mistyped, ask the student to correct it at the top of the website.</span>
       <div class="row">${unlisted.map(st => `<button class="btn sm alt" type="button" data-add="${esc(st.m)}" data-name="${esc(st.name)}">+ ${esc(st.name)} · ${esc(st.m)}</button>`).join("")}</div></div>` : ""}
-    <ul class="sd-roster">${list.map(x => `<li><span>${esc(x.name)}</span><span class="small">${esc(x.m)}${me.role === "leader" ? " · " + esc((x.teachers || []).join(", ")) : ""}${x.addedBy ? (x.addedBy === me.user ? " · added by you" : " · added") : ""}</span>${canRemove(x) ? `<button class="x" type="button" data-rm="${esc(x.m)}" data-name="${esc(x.name)}" aria-label="Remove ${esc(x.name)}" title="Remove">×</button>` : ""}</li>`).join("") || `<li class="small">No students on this list yet.</li>`}</ul>
+    <ul class="sd-roster">${list.map(x => `<li><span>${esc(x.name)}</span><span class="small">${esc(x.m)}${me.role === "leader" ? " · " + esc((x.teachers || []).join(", ")) : ""}${x.shared ? " · shared list" : x.addedBy ? (x.addedBy === me.user ? " · added by you" : " · added") : ""}</span>${canRemove(x) ? `<button class="x" type="button" data-rm="${esc(x.m)}" data-name="${esc(x.name)}" aria-label="Remove ${esc(x.name)}" title="Remove">×</button>` : ""}</li>`).join("") || `<li class="small">No students on this list yet.</li>`}</ul>
     <form id="lAdd" class="sd-addform">
       <label>M Number<input id="lM" type="text" placeholder="e.g. M9093" autocomplete="off" spellcheck="false" maxlength="9" required></label>
       <label>Full name <span class="small">only if they're new to the school list</span><input id="lName" type="text" autocomplete="off" maxlength="80"></label>

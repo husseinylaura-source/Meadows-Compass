@@ -24,6 +24,9 @@ Islamic, Literacy/ Islamic Teacher):
 - **Moral Education**: the teacher next to "ME/ Lit" when it says ME.
 - **Literacy**: the teacher next to "ME/ Lit" when it says Lit, **and** the "Literacy/ Islamic Teacher" (both see it).
 - Section Y7AA = class 7A on the website, Y8BB = 8B, and so on.
+- **Years 12–13 Moral Education** (not in the master list): every student is given to both MEL and RZE, from
+  their first result (or from Year 12/13 tabs if added to the master list). Each teacher removes the students who
+  aren't theirs under **My students**; that removes them from her list only.
 
 ## 1. Make the Sheet
 1. In your **school** Google account, create a blank Google Sheet called "Meadows Compass – Teacher Dashboard".

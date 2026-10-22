@@ -50,8 +50,11 @@ const NONE = { name: "No work yet", bg: "#eeeeee", fg: "#555555" };
 /* Full names for teacher codes (the master list's key gives "Ms. Ayoub" style names or none). Edit freely. */
 const KNOWN_NAMES = { SAY: "Sara Ayoub", PLO: "Premraj Loganathan", AZE: "Aiman Zein", RKH: "Rasha Khasawneh",
   LHU: "Laura Husseiny", EPU: "Emel Punar", AIS: "Abeer Issa", FNA: "Fardoos Nagi", AEL: "Amany Elgwely",
-  MAL: "Mariam Aldaouk", RAL: "Rahma Al Louati", RKA: "Ruby Kaur", ANE: "Ashley New", NQU: "Naveed Qureshi",
+  MAL: "Mariam Aldaouk", RAL: "Raj Alrahman", RKA: "Ruby Kaur", ANE: "Ashley New", NQU: "Naveed Qureshi",
   RZE: "Rida Zein", MEL: "Marwa Elgamel" };
+/* Classes a teacher sees whole, when the master list doesn't cover them (from the 2026–27 timetable:
+   Years 12–13 Moral Education is taught by MEL and RZE). Used when their login is first created. */
+const WHOLE_CLASSES = { MEL: "12A, 12B, 12C, 12D, 13A, 13B, 13C, 13D", RZE: "12A, 12B, 12C, 12D, 13A, 13B, 13C, 13D" };
 const MASTER_DEFAULT = "https://docs.google.com/spreadsheets/d/1RL6aYKfV2GdSI9vmed7Gw8RHkB2K6mKLxcW3NQpJtGc/edit";
 
 function band(pct) {
@@ -209,7 +212,7 @@ function importLists() {
     rows_(SH.teachers).forEach(r => { have[String(r[TE.Username]).trim().toLowerCase()] = 1; codes_(r[TE.Code]).forEach(c => have["#" + c] = 1); });
     const used = {}; students.forEach(s => SUBJECTS.forEach((x, i) => codes_(s[4 + i]).forEach(c => used[c] = 1)));
     const add = Object.keys(used).concat(Object.keys(legend)).filter((c, i, a) => a.indexOf(c) === i && !have["#" + c] && !have[c.toLowerCase()]).sort()
-      .map(c => [c.toLowerCase(), "", KNOWN_NAMES[c] || legend[c] || c, c, "", "Teacher"]);
+      .map(c => [c.toLowerCase(), "", KNOWN_NAMES[c] || legend[c] || c, c, WHOLE_CLASSES[c] || "", "Teacher"]);
     if (add.length) tch.getRange(tch.getLastRow() + 1, 1, add.length, TEACHER_HEAD.length).setValues(add);
   } finally { lock.releaseLock(); }
   setSetting_("Last import", Utilities.formatDate(new Date(), "Asia/Dubai", "d MMM yyyy, HH:mm") + " · " + students.length + " students");

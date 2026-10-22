@@ -50,7 +50,7 @@ function art(key,img){if(img)return `<img class="photo" src="${esc(img)}" alt=""
 let me=store.get("me",{name:"",cls:""});
 function setupMe(){const sel=$("#stuClass"),nm=$("#stuName");const all=Object.values(YEARS).flatMap(y=>y.classes);
   sel.innerHTML='<option value="">Choose</option>'+all.map(c=>`<option ${c===me.cls?"selected":""}>${c}</option>`).join("");
-  nm.value=me.name||"";nm.oninput=()=>{me.name=nm.value;store.set("me",me)};sel.onchange=()=>{me.cls=sel.value;store.set("me",me);route()}}
+  nm.value=me.name||"";nm.oninput=()=>{me.name=nm.value;store.set("me",me);window.Results&&Results.identityChanged()};sel.onchange=()=>{me.cls=sel.value;store.set("me",me);window.Results&&Results.identityChanged();route()}}
 function lessonDate(year,cls,wc){const g=(YEARS[year].msc||[]).find(g=>g.classes.includes(cls));const d=new Date(wc+"T00:00:00");if(g)d.setDate(d.getDate()+g.day);return {date:d,group:g}}
 function currentWeekIdx(list){const now=new Date();let idx=-1;list.forEach((w,i)=>{if(now>=new Date(w+"T00:00:00"))idx=i});return idx}
 const words=s=>String(s||"").split(",").map(w=>w.trim()).filter(Boolean);
@@ -91,7 +91,7 @@ function classFilter(y,sub,extra){const Y=YEARS[y];const cls=Y.classes.includes(
   if(sub==="me"&&Y.me)info=`<div class="classinfo"><div><b>${ar?"المعلمون":"Teachers"}</b>${esc(Y.me)}</div></div>`;
   return `<div class="panel"><div class="row" style="justify-content:space-between"><h3>${ar?"صفّك":"Your class"}</h3><span class="small">${ar?"اختر صفّك":(extra||"Pick your class")}</span></div>
     <div class="filter" role="group" aria-label="Class">${Y.classes.map(c=>`<button type="button" data-c="${c}" aria-pressed="${c===cls}">${c}</button>`).join("")}</div>${info}</div>`}
-function wireFilter(app,again){app.querySelectorAll(".filter button").forEach(b=>b.onclick=()=>{me.cls=b.dataset.c;store.set("me",me);setupMe();again()})}
+function wireFilter(app,again){app.querySelectorAll(".filter button").forEach(b=>b.onclick=()=>{me.cls=b.dataset.c;store.set("me",me);window.Results&&Results.identityChanged();setupMe();again()})}
 function progressOf(key,total){const s=store.get(key,{});const n=Object.keys(s.done||{}).length;return {n,total,pct:Math.round(n/total*100)}}
 
 function subjectPage(app,y,sub){const Y=YEARS[y];const S=SUBJECTS[sub];if(!Y||!S||!Y.subjects.includes(sub))return yearPage(app,y);
@@ -118,7 +118,8 @@ function subjectPage(app,y,sub){const Y=YEARS[y];const S=SUBJECTS[sub];if(!Y||!S
 /* ---------- shared lesson shell ---------- */
 function lessonShell(app,o){
   /* o: {key, unit, steps:[{k,name,min}], render(stepKey, stage, ctx), pdf(state)} */
-  const K=o.key;let S=store.get(K,{done:{},step:0});S.done=S.done||{};const save=()=>store.set(K,S);
+  const K=o.key;let S=store.get(K,{done:{},step:0});S.done=S.done||{};const save=()=>{store.set(K,S);window.Results&&Results.queue(K,S)};
+  if(window.Results&&Results.enabled()&&(!me.name||!me.cls))setTimeout(()=>toast(T("Add your name and class at the top so your teacher can see your progress.","اكتب اسمك وصفّك في الأعلى ليرى معلمك تقدّمك.")),800);
   app.setAttribute("data-unit",o.unit||"msc");
   app.innerHTML=`<div class="lesson"><div class="clock" id="clock"><span class="time" id="ctime">00:00</span><div class="phase"><div id="cphase"></div><div class="bar" id="cbar">${o.steps.filter(s=>s.min).map(s=>`<i class="todo" style="width:${s.min/40*100}%"></i>`).join("")}</div></div><div class="row"><button class="btn sm" id="cgo" type="button">${T("Start","ابدأ")}</button><button class="btn sm alt" id="creset" type="button">${T("Reset","إعادة")}</button></div></div>
     <nav class="steps" id="steps" aria-label="Lesson steps"></nav><section class="stage" id="stage"></section></div>`;
@@ -439,5 +440,5 @@ function evidenceHunt(C,ctx){const S=ctx.S;S.ev=S.ev||[];const sents=sentencesOf
   box.append(tx,el("div",{class:"row"},chk),fb);return box}
 
 /* ---------- boot ---------- */
-setupMe();route();
+setupMe();route();window.Results&&Results.syncAll();
 })();

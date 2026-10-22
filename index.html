@@ -78,6 +78,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 .me{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .me input,.me select{font:inherit;font-size:15px;padding:6px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);min-width:0}
 .me input{width:150px}
+.me #stuM{width:104px;text-transform:uppercase}
+.me #stuM.bad{border-color:var(--bad);background:var(--bad-soft)}
 .me label{font-size:13px;font-weight:700;color:var(--muted)}
 
 /* home */
@@ -377,6 +379,38 @@ body.staff .me{display:none}
 .sd-roster li span:first-child{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sd-roster .x{margin-left:auto;border:0;background:transparent;color:var(--muted);font-size:20px;line-height:1;width:32px;height:32px;border-radius:8px;cursor:pointer}
 .sd-roster .x:hover,.sd-roster .x:focus-visible{background:var(--bad-soft);color:var(--bad)}
+.sd-issued{display:grid;gap:6px;background:var(--good-soft);border:1.5px solid var(--good);border-radius:12px;padding:12px 14px}
+.sd-issued code,.sd-staff code{font-size:15px;background:var(--surface);padding:1px 6px;border-radius:6px}
+.sd-staff td.acts{white-space:nowrap;text-align:right}
+.sd-staff .x{border:0;background:transparent;color:var(--muted);font-size:20px;width:32px;height:32px;border-radius:8px;cursor:pointer;vertical-align:middle}
+.sd-staff .x:hover,.sd-staff .x:focus-visible{background:var(--bad-soft);color:var(--bad)}
+.sd-acct{display:grid;gap:14px;border:1.5px solid var(--ta);border-radius:14px;padding:16px}
+.sd-acct h3{font-size:20px}
+.sd-acct>label,.sd-acct .grid2 label{display:grid;gap:4px;font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.sd-acct input[type=text]{font:inherit;font-size:16px;padding:8px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);text-transform:none;letter-spacing:0;min-width:0;flex:1 1 200px}
+.sd-acct input[readonly]{background:var(--bg);color:var(--muted)}
+.sd-acct fieldset{border:0;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sd-acct fieldset[hidden]{display:none}
+.sd-acct legend{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;padding:0}
+.sd-acct legend .small,.sd-acct label .small{text-transform:none;letter-spacing:0;font-weight:400}
+.sd-role{display:grid!important;gap:6px}
+.sd-role label{display:flex;gap:8px;align-items:baseline;font-weight:700;flex-wrap:wrap}
+.cl-year{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%}
+.cl-year>.small{width:62px;flex:none}
+.cl{position:relative;cursor:pointer}
+.cl input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.cl span{display:inline-block;border:2px solid var(--line);border-radius:99px;padding:4px 12px;font-weight:700;font-size:15px;background:var(--surface)}
+.cl input:checked+span{border-color:var(--sea);background:var(--sea);color:var(--surface)}
+.cl input:focus-visible+span{outline:3px solid var(--sand);outline-offset:2px}
+.sd-addform{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.sd-addform label{display:grid;gap:4px;font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;flex:1 1 180px;min-width:0}
+.sd-addform label .small{text-transform:none;letter-spacing:0;font-weight:400}
+.sd-addform input,.sd-addform select{font:inherit;font-size:16px;padding:8px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);text-transform:none;letter-spacing:0;min-width:0}
+.sd-addform #lM{text-transform:uppercase}
+.sd-roster li span.small{white-space:nowrap}
+.mno{display:block;font-size:12px;font-weight:400;color:var(--muted)}
+.sd-import{justify-content:space-between;background:var(--bg);border-radius:10px;padding:8px 12px}
+.sd-acct #acCode{font:inherit;font-size:16px;padding:8px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);letter-spacing:0}
 .sd-unlisted{display:grid;gap:6px;background:var(--sand-soft);border-radius:12px;padding:12px 14px}
 .sd-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap}
 .sd-head h1{font-size:clamp(28px,4.4vw,42px)}
@@ -427,7 +461,7 @@ body.staff .me{display:none}
 .sd-empty h2{font-size:clamp(20px,2.6vw,25px)}
 @media (max-width:760px){.sd-filters,.sd-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.bands{grid-template-columns:1fr}}
 @media print{
-  body.staff .topbar,body.staff footer,.sd-actions,.sd-filters,.sd-ph input,.chk,#toast,#sdLists{display:none!important}
+  body.staff .topbar,body.staff footer,.sd-actions,.sd-filters,.sd-ph input,.chk,#toast,#sdLists,#sdStaff{display:none!important}
   body.staff{background:#fff;font-size:12px}
   .panel,.kpi{break-inside:avoid;border-color:#ccc}
   .tscroll{overflow:visible}
@@ -442,6 +476,7 @@ body.staff .me{display:none}
     <div class="me">
       <label for="stuName">Name</label><input id="stuName" type="text" placeholder="Your full name" autocomplete="off">
       <label for="stuClass">Class</label><select id="stuClass"></select>
+      <label for="stuM">M Number</label><input id="stuM" type="text" placeholder="e.g. M9093" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" maxlength="9">
     </div>
   </div>
   <main id="app"></main>

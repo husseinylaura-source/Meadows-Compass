@@ -1,8 +1,9 @@
 # Teacher Dashboard – setup (about 10 minutes, once)
 
-Students' lesson scores go from the website into a Google Sheet. Teachers see who has and hasn't completed
-each lesson, each student's term average and their band, either on the website's **Staff** page
-(each with their own login, showing only their classes) or, for leaders, in the Sheet itself.
+Students type their **M Number** and class at the top of the website. Every lesson they work on sends its %
+to a Google Sheet. The Sheet reads the school's master student list, which gives each student's section and,
+for each subject, their teacher's code (PLO, SAY, …). Each teacher signs in on the website's **Staff** page and
+sees only **their own students**; leaders see everyone and manage logins there too.
 
 | Band | Lesson / term % |
 |---|---|
@@ -11,83 +12,59 @@ each lesson, each student's term average and their band, either on the website's
 | Meeting | 60–79% |
 | Exceeding | 80–100% |
 
-**Lesson %** = 70% auto-marked work (quiz multiple choice, Challenge sort/order games, Literacy reading
-quiz, evidence hunt and gap-fills) + 30% lesson steps completed. Lessons with nothing auto-marked
-(e.g. Literacy WRITE) use steps completed only. Change the 70/30 split in `js/config.js`.
+**Lesson %** = 70% auto-marked work (quiz, Challenge games, Literacy reading quiz, evidence hunt, gap-fills)
++ 30% lesson steps completed. Lessons with nothing auto-marked (e.g. Literacy WRITE) use steps only.
+Change the split in `js/config.js`.
+**Term average** = average of the lessons a student attempted (Settings → "Missed lessons count as 0%" to change).
 
-**Term average** = average of the lessons a student attempted that term. To count missed lessons as 0%,
-set "Missed lessons count as 0%" to Yes on the Settings tab.
+## Who sees whom
+From the master list (one tab per year, headings: M Number, Name, Section, ME/ Lit + Teacher, SS/MSC + Teacher,
+Islamic, Literacy/ Islamic Teacher):
+- **MSC / Social Studies**: the teacher next to "SS/MSC".
+- **Moral Education**: the teacher next to "ME/ Lit" when it says ME.
+- **Literacy**: the teacher next to "ME/ Lit" when it says Lit, **and** the "Literacy/ Islamic Teacher" (both see it).
+- Section Y7AA = class 7A on the website, Y8BB = 8B, and so on.
 
 ## 1. Make the Sheet
-1. Sign in to your **school** Google account and create a new blank Google Sheet. Name it
-   "Meadows Compass – Teacher Dashboard".
+1. In your **school** Google account, create a blank Google Sheet called "Meadows Compass – Teacher Dashboard".
+   You need to be able to open the master student list with the same account.
 2. **Extensions → Apps Script.** Delete what's there, paste everything from `Code.gs`, click **Save**.
-3. In the function box at the top choose **setup**, click **Run**, and allow the permissions it asks for.
-   Go back to the Sheet: the tabs Dashboard, Completion, Report, Results, Roster, Name fixes and
-   Settings are now there, plus a **Meadows Compass** menu.
+3. Choose **setup** in the function box, click **Run**, and allow the permissions it asks for (it needs to read the
+   master list and to run on a timer).
+4. Back in the Sheet: the **Roster** tab now lists every student with their teacher codes, and the **Teachers**
+   tab has one login per teacher code (no passwords yet). Settings shows when the list was last imported.
+   It re-reads the master list every hour, so changes there flow through.
 
 ## 2. Switch on receiving results
-1. In Apps Script: **Deploy → New deployment →** gear icon **→ Web app**.
-2. Execute as: **Me**. Who has access: **Anyone**. Click **Deploy** and copy the **Web app URL**
-   (it ends in `/exec`).
-3. Open the URL in a browser: it should say "Meadows Compass results endpoint is running."
+1. Apps Script: **Deploy → New deployment →** gear icon **→ Web app**. Execute as **Me**, access **Anyone**. **Deploy**.
+2. Copy the **Web app URL** (ends in `/exec`). Opening it should say "Meadows Compass results endpoint is running."
 
 ## 3. Connect the website
-1. In the website files, open `js/config.js` and paste the URL between the quotes:
-   `resultsUrl: "https://script.google.com/macros/s/…/exec",`
-2. Upload the changed files to GitHub (or Netlify). From then on, every lesson a student works on is
-   sent within a few seconds. Lessons already done on a device are sent the next time the student opens
-   the site.
+Put the URL in `js/config.js` (`resultsUrl: "…/exec"`) and upload it, or send it to whoever maintains the site.
 
-Students must type their **name and choose their class** at the top of the site, otherwise nothing is sent
-(the site reminds them).
+## 4. Logins
+1. **Your login**: on the Teachers tab, type a password in cell **B2** (row "laura", role Leader, code LHU).
+   It's scrambled the first time you sign in.
+2. Go to the website → **Staff** (bottom of any page, or add `#teacher` to the address) and sign in as `laura`.
+3. Under **Staff accounts**, press **Set password** next to each teacher. A password is generated for you;
+   press **Save**, then **Copy login** and send it to the teacher privately. Usernames are their codes in
+   lower case (e.g. `plo`); you can change any username, name or code with **Edit**.
+4. Optional: **Whole classes** on a login (e.g. for a head of year) shows every student in those classes.
 
-## 4. Give each teacher a login
-1. In the Sheet, open the **Teachers** tab. One row per member of staff:
-
-   | Username | Password | Name | Classes | Subjects | Role |
-   |---|---|---|---|---|---|
-   | laura | (your password) | Laura Husseiny | | | Leader |
-   | rasha.k | (her password) | Rasha Khasawneh | 8A, 8B, 8C | MSC | Teacher |
-
-   - **Leader** sees every class and subject.
-   - **Teacher** sees only the **Classes** listed. **Subjects** is optional (MSC, Social Studies,
-     Moral Education, Literacy); leave it blank for all subjects in those classes.
-   - Give everyone a different password. A row with no password can't sign in.
-2. Teachers go to the website, click **Staff** at the bottom of any page (or add `#teacher` to the address),
-   and sign in. They see filters, the four bands with counts and %, completion and term averages, every
-   student with the lessons they haven't attempted, and a lesson-by-lesson grid for one class and subject.
-   **Print report** and **Download CSV** are at the top.
-3. **Class lists** at the bottom of the page: teachers can add a student who's missing from their class,
-   or add with one click a student who is sending work but isn't on the list. New names go to the Roster tab
-   ("Added by" shows who). Teachers can remove only students they added; leaders can remove anyone.
-4. After 8 wrong passwords a username is locked for 15 minutes.
-
-Before the Sheet is connected, the Staff page offers **Preview with sample data** (made-up students) so you
-can see how it looks.
-
-## 5. Fill in the Sheet
-- **Roster**: paste each class list (column A class e.g. `8A`, column B full name). Students on the roster
-  who have done nothing still appear, marked "No work yet" / "—". Teachers can also add students from the Staff page.
-- **Settings**: check the three term start dates match the school calendar.
-- **Name fixes**: if the Report shows "Check name" (a student typed their name differently), add a row:
-  name they typed · class · correct roster name.
-
-## 6. Use the Sheet
-- **Dashboard**: pick Term, Year group, Class and Subject (yellow cells). You see how many students are in
-  each band and what % that is, the share Meeting or above, average completion, and every student
-  with the lessons they haven't attempted yet.
-- **Completion**: a grid per class and subject: each lesson's % (colour = band), "—" for not attempted,
-  italic for started but not finished. It shows the term chosen on the Dashboard.
-- Everything refreshes every 10 minutes. For an instant update: **Meadows Compass → Refresh dashboard**.
-- End of term: filter the Dashboard to the term and use the band counts for your report; File → Download
-  gives Excel or PDF.
-
-**Share the Sheet with leaders only.** It holds every teacher's password and all classes' data; teachers use the website's Staff page instead.
+## 5. What teachers see
+- Filters for term, year group, class and subject; the four bands with counts and %; average completion and
+  term %; every student with the lessons they haven't attempted; a lesson-by-lesson grid for one class and
+  subject; **Print report** and **Download CSV**.
+- **My students**: their students by class and subject, with M Numbers. They can add a student by M Number
+  (name only needed if the student isn't on the school list yet), or with one click when an unknown M Number
+  has sent work in their class. They can remove only students they added; school-list students change when the
+  master list changes.
 
 ## Good to know
-- Only scores are sent (name, class, lesson, %), not students' written answers.
-- If you change the script later (including this version, which adds the Staff page feed), use **Deploy → Manage deployments → Edit → New version** so the
-  website's URL stays the same.
-- The web address is public, so in principle someone could send made-up results. Names that aren't on the
-  Roster are flagged "Check name" on the Report.
+- Students must enter their **M Number** and class at the top of the site, otherwise nothing is sent (the site
+  reminds them). Their name is still used on their PDF hand-in.
+- Results from an M Number that isn't on the school list are flagged **check M Number**.
+- Only scores are sent (M Number, name, class, lesson, %), not students' written answers.
+- Keep the Google Sheet shared with **leaders only**. Teachers use the website.
+- After changing the script, use **Deploy → Manage deployments → Edit → New version** so the URL stays the same.
+- After 8 wrong passwords a username is locked for 15 minutes.

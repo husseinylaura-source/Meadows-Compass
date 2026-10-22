@@ -31,6 +31,8 @@ Then add a `<script src="data/…"></script>` line for each new file in `index.h
 - All years are in Arabic. Years 7–8 come from the department's decks; Years 9–13 (`data/y9-me.js` … `data/y13-me.js`) were written from the MOE 2025–26 Term 1 book contents. Replace any lesson by editing its file.
 
 ## Teacher dashboard (student progress and bands)
-Each lesson's % (auto-marked work + steps completed) is sent to a Google Sheet that teachers open to see
-completion, term averages and bands (Below / Working towards / Meeting / Exceeding).
-Setup: `teacher-dashboard/SETUP.md`. The Sheet's web address goes in `js/config.js`; leave it empty to switch sending off.
+Students enter their M Number and class at the top of the site. Each lesson's % (auto-marked work + steps
+completed) goes to a Google Sheet that reads the school's master student list. Teachers sign in on the
+**Staff** page (`#teacher`) and see only their own students: completion, term averages and bands
+(Below / Working towards / Meeting / Exceeding). Setup: `teacher-dashboard/SETUP.md`.
+The Sheet's web address goes in `js/config.js`; leave it empty to switch sending off.

@@ -20,6 +20,7 @@ const YEARS = {
   12:{grade:11, classes:["12A","12B","12C","12D"], subjects:["me"], me:"Marwa Elgamel · Rida Zein"},
   13:{grade:12, classes:["13A","13B","13C","13D"], subjects:["me"], me:"Marwa Elgamel · Rida Zein"}
 };
+window.COMPASS_YEARS = YEARS;   /* class lists for the Staff page */
 const SUBJECTS = {
   msc:{name:"Moral, Social & Cultural Studies", short:"MSC", lang:"English", who:"For non-Arab students. Taught in English.", art:"globe"},
   ss: {name:"Social Studies", short:"Social Studies", lang:"العربية", who:"For Arab students. Taught in Arabic.", art:"explore"},
@@ -50,7 +51,10 @@ function art(key,img){if(img)return `<img class="photo" src="${esc(img)}" alt=""
 let me=store.get("me",{name:"",cls:""});
 function setupMe(){const sel=$("#stuClass"),nm=$("#stuName");const all=Object.values(YEARS).flatMap(y=>y.classes);
   sel.innerHTML='<option value="">Choose</option>'+all.map(c=>`<option ${c===me.cls?"selected":""}>${c}</option>`).join("");
-  nm.value=me.name||"";nm.oninput=()=>{me.name=nm.value;store.set("me",me);window.Results&&Results.identityChanged()};sel.onchange=()=>{me.cls=sel.value;store.set("me",me);window.Results&&Results.identityChanged();route()}}
+  nm.value=me.name||"";nm.oninput=()=>{me.name=nm.value;store.set("me",me);window.Results&&Results.identityChanged()};
+  const mn=$("#stuM");if(mn){const okM=v=>/^M?\d{3,7}$/i.test(String(v||"").replace(/\s+/g,""));mn.value=me.mno||"";mn.classList.toggle("bad",!!mn.value&&!okM(mn.value));
+    mn.oninput=()=>{const v=mn.value.toUpperCase().replace(/\s+/g,"");me.mno=okM(v)?"M"+v.replace(/^M/,""):"";store.set("me",me);mn.classList.toggle("bad",!!v&&!okM(v));window.Results&&Results.identityChanged()};
+    mn.onblur=()=>{if(me.mno)mn.value=me.mno}}sel.onchange=()=>{me.cls=sel.value;store.set("me",me);window.Results&&Results.identityChanged();route()}}
 function lessonDate(year,cls,wc){const g=(YEARS[year].msc||[]).find(g=>g.classes.includes(cls));const d=new Date(wc+"T00:00:00");if(g)d.setDate(d.getDate()+g.day);return {date:d,group:g}}
 function currentWeekIdx(list){const now=new Date();let idx=-1;list.forEach((w,i)=>{if(now>=new Date(w+"T00:00:00"))idx=i});return idx}
 const words=s=>String(s||"").split(",").map(w=>w.trim()).filter(Boolean);
@@ -121,7 +125,7 @@ function subjectPage(app,y,sub){const Y=YEARS[y];const S=SUBJECTS[sub];if(!Y||!S
 function lessonShell(app,o){
   /* o: {key, unit, steps:[{k,name,min}], render(stepKey, stage, ctx), pdf(state)} */
   const K=o.key;let S=store.get(K,{done:{},step:0});S.done=S.done||{};const save=()=>{store.set(K,S);window.Results&&Results.queue(K,S)};
-  if(window.Results&&Results.enabled()&&(!me.name||!me.cls))setTimeout(()=>toast(T("Add your name and class at the top so your teacher can see your progress.","اكتب اسمك وصفّك في الأعلى ليرى معلمك تقدّمك.")),800);
+  if(window.Results&&Results.enabled()&&(!me.mno||!me.cls))setTimeout(()=>toast(T("Add your M Number and class at the top so your teacher can see your progress.","اكتب رقمك المدرسي (M Number) واختر صفّك في الأعلى ليرى معلمك تقدّمك.")),800);
   app.setAttribute("data-unit",o.unit||"msc");
   app.innerHTML=`<div class="lesson"><div class="clock" id="clock"><span class="time" id="ctime">00:00</span><div class="phase"><div id="cphase"></div><div class="bar" id="cbar">${o.steps.filter(s=>s.min).map(s=>`<i class="todo" style="width:${s.min/40*100}%"></i>`).join("")}</div></div><div class="row"><button class="btn sm" id="cgo" type="button">${T("Start","ابدأ")}</button><button class="btn sm alt" id="creset" type="button">${T("Reset","إعادة")}</button></div></div>
     <nav class="steps" id="steps" aria-label="Lesson steps"></nav><section class="stage" id="stage"></section></div>`;

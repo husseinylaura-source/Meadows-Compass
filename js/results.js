@@ -1,5 +1,5 @@
 /* Meadows Compass – lesson results for the teacher dashboard.
-   Works out each lesson's % and sends it (with the student's name and class) to the Google Sheet
+   Works out each lesson's % and sends it (with the student's M Number, name and class) to the Google Sheet
    set in js/config.js. Answers stay on the student's device; only scores are sent.
 
    Lesson % = autoWeight × (auto-marked score) + stepsWeight × (lesson steps completed)
@@ -86,7 +86,9 @@ function score(key, S){
 function started(S){ return S && ((S.done && Object.keys(S.done).length) ||
   Object.keys(S).some(k => !["done","step"].includes(k))); }
 
-function student(){ const me = get("me", {}); return { name: String(me.name||"").trim().replace(/\s+/g," "), cls: me.cls || "" }; }
+function student(){ const me = get("me", {});
+  const m = String(me.mno||"").toUpperCase().replace(/\s+/g,"").match(/^M?(\d{3,7})$/);
+  return { name: String(me.name||"").trim().replace(/\s+/g," "), cls: me.cls || "", mno: m ? "M" + m[1] : "" }; }
 
 function send(payload){
   const url = CFG.resultsUrl; if(!url) return false;
@@ -98,11 +100,11 @@ function send(payload){
 /* Send a lesson's result if it changed since the last send for this student. */
 function report(key, S){
   if(!CFG.resultsUrl) return;
-  const me = student(); if(!me.name || !me.cls || !started(S)) return;
+  const me = student(); if(!me.mno || !me.cls || !started(S)) return;
   const r = score(key, S); if(!r) return;
   // Only send for the student's own year group (a Year 8 class doing a Year 8 lesson).
   const clsYear = parseInt(me.cls, 10); if(clsYear && clsYear !== r.year) return;
-  const payload = Object.assign({ v: 1, student: me.name, cls: me.cls }, r);
+  const payload = Object.assign({ v: 2, mno: me.mno, student: me.name, cls: me.cls }, r);
   const sig = JSON.stringify(payload);
   const sent = get("sent", {});
   if(sent[key] === sig) return;

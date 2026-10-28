@@ -1,0 +1,25 @@
+// EduGhaf on Cloudflare Workers. Setup steps: CLOUDFLARE-SETUP.md
+{
+  "name": "edughaf",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-01",
+  // The website files are served as they are; only /api/… runs the code in src/worker.js
+  "assets": {
+    "directory": "./",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  // The database (accounts, class lists, saved lessons). Created automatically on the first deploy.
+  "d1_databases": [
+    { "binding": "DB", "database_name": "edughaf-db" }
+  ],
+  "vars": {
+    // First sign-in only: the leader account (LHU). The password is in the accounts spreadsheet and must be changed on first sign-in.
+    // This is a scrambled (hashed) password, not the password itself.
+    "ADMIN_BOOTSTRAP": "lhu:pbkdf2$10000$R/Hku1WZM69iU5Tu++aM8g==$TSwyN1qJknB/9dyoLsNZkqWHGRFOqKfOMyiLZzutxkg=",
+    "ADMIN_NAME": "Laura Husseiny",
+    // Second backup: every lesson result is also copied to the Google Sheet (Apps Script web app). Set to "" to switch off.
+    "MIRROR_URL": "https://script.google.com/macros/s/AKfycbyH0XV07k_aeKYNZ2VeC71mpF0quPQB3A1aeDmTxmekL_c1mOCX3R-g_nWfOdKjgrjJQg/exec"
+  },
+  "observability": { "enabled": true }
+}

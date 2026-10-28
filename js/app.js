@@ -49,12 +49,7 @@ function el(tag,attrs,...kids){const e=document.createElement(tag);if(attrs)for(
 function art(key,img){if(img)return `<img class="photo" src="${esc(img)}" alt="" onerror="this.outerHTML=window.ART&&window.ART['${esc(key)}']||''">`;return ART[key]||ART.book||""}
 
 let me=store.get("me",{name:"",cls:""});
-function setupMe(){const sel=$("#stuClass"),nm=$("#stuName");const all=Object.values(YEARS).flatMap(y=>y.classes);
-  sel.innerHTML='<option value="">Choose</option>'+all.map(c=>`<option ${c===me.cls?"selected":""}>${c}</option>`).join("");
-  nm.value=me.name||"";nm.oninput=()=>{me.name=nm.value;store.set("me",me);window.Results&&Results.identityChanged()};
-  const mn=$("#stuM");if(mn){const okM=v=>/^M?\d{3,7}$/i.test(String(v||"").replace(/\s+/g,""));mn.value=me.mno||"";mn.classList.toggle("bad",!!mn.value&&!okM(mn.value));
-    mn.oninput=()=>{const v=mn.value.toUpperCase().replace(/\s+/g,"");me.mno=okM(v)?"M"+v.replace(/^M/,""):"";store.set("me",me);mn.classList.toggle("bad",!!v&&!okM(v));window.Results&&Results.identityChanged()};
-    mn.onblur=()=>{if(me.mno)mn.value=me.mno}}sel.onchange=()=>{me.cls=sel.value;store.set("me",me);window.Results&&Results.identityChanged();route()}}
+function setupMe(){me=store.get("me",{name:"",cls:""});window.Auth&&Auth.paintBar()}
 function lessonDate(year,cls,wc){const g=(YEARS[year].msc||[]).find(g=>g.classes.includes(cls));const d=new Date(wc+"T00:00:00");if(g)d.setDate(d.getDate()+g.day);return {date:d,group:g}}
 function currentWeekIdx(list){const now=new Date();let idx=-1;list.forEach((w,i)=>{if(now>=new Date(w+"T00:00:00"))idx=i});return idx}
 const words=s=>String(s||"").split(",").map(w=>w.trim()).filter(Boolean);
@@ -63,8 +58,12 @@ const words=s=>String(s||"").split(",").map(w=>w.trim()).filter(Boolean);
 window.addEventListener("hashchange",route);
 function crumbs(parts){$("#crumbs").innerHTML=`<a class="brand" href="#" aria-label="EduGhaf home"><svg viewBox="20 40 160 130" aria-hidden="true"><path d="M34 98 C34 68 66 50 100 50 C134 50 166 68 166 98 C154 91 143 96 131 90 C120 97 111 92 100 97 C89 92 80 97 69 90 C57 96 46 91 34 98 Z" fill="var(--ghaf)"/><path d="M100 148 C100 126 91 112 76 101 M100 148 C100 126 109 112 124 101 M100 130 L100 97" fill="none" stroke="var(--ghaf)" stroke-width="8" stroke-linecap="round"/><path d="M26 150 Q63 134 100 150 Q137 134 174 150 L174 164 Q137 148 100 164 Q63 148 26 164 Z" fill="var(--ghafsand)"/></svg><span><span class="b-edu">Edu</span>Ghaf</span></a>`+parts.map(p=>`<span class="sep">›</span>`+(p[1]?`<a href="#${p[1]}">${esc(p[0])}</a>`:`<span>${esc(p[0])}</span>`)).join("")}
 function route(){
-  clearInterval(route._tick);const h=(location.hash||"").slice(1);const app=$("#app");app.removeAttribute("data-unit");LANG="en";app.removeAttribute("dir");app.removeAttribute("lang");window.scrollTo(0,0);let m;
-  window.Teacher&&Teacher.leave();
+  clearInterval(route._tick);const h=(location.hash||"").slice(1);const app=$("#app");app.removeAttribute("data-unit");LANG="en";app.removeAttribute("dir");app.removeAttribute("lang");window.scrollTo(0,0);let m;me=store.get("me",me);
+  window.Teacher&&Teacher.leave();document.body.classList.remove("staff");
+  const A=window.Auth&&Auth.me;
+  if(h==="login")return A?(location.hash=A.role==="student"?"":"#teacher"):(crumbs([["Sign in"]]),Auth.page(app,""));
+  if(A&&A.mustChange)return crumbs([["Your password"]]),Auth.passwordPage(app,h==="password"?"":h,true);
+  if(h==="password")return crumbs([["Change password"]]),Auth.passwordPage(app,"");
   if(h==="teacher")return window.Teacher?Teacher.show(app,crumbs):home(app);
   if(!h)return home(app);
   if((m=h.match(/^y(\d+)-(?:(?:msc|ss)-w\d+|me-l\d+|lit-u\d-w\d-(?:read|words|write))$/))&&YEARS[+m[1]]&&!signedIn(+m[1]))return gate(app,+m[1]);
@@ -80,23 +79,14 @@ function route(){
 
 /* ---------- before a lesson: M Number and class are required ---------- */
 const okM=v=>/^M?\d{3,7}$/i.test(String(v||"").replace(/\s+/g,""));
-function signedIn(y){return okM(me.mno)&&YEARS[y].classes.includes(me.cls)}
-function gate(app,y){const Y=YEARS[y];crumbs([["Year "+y,"y"+y],["Before you start"]]);
-  const bad=me.cls&&!Y.classes.includes(me.cls);
-  app.innerHTML=`<section class="panel gate"><span class="eyebrow">Year ${y} · Before you start</span>
-    <h1>Enter your M Number</h1><p class="small">Your teacher uses your M Number to see your progress. You can't start the lesson without it.<br><span lang="ar" dir="rtl">اكتب رقمك المدرسي (M Number) واختر صفّك قبل أن تبدأ الدرس.</span></p>
-    <form id="gForm" class="gate-form" novalidate>
-      <label>M Number <span class="small">on your ID card or ManageBac, e.g. M9093</span><input id="gM" type="text" value="${esc(me.mno||"")}" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="9" required></label>
-      <label>Class<select id="gCls" required><option value="">Choose your class</option>${Y.classes.map(c=>`<option ${c===me.cls?"selected":""}>${c}</option>`).join("")}</select></label>
-      <label>Name <span class="small">for your hand-in</span><input id="gName" type="text" value="${esc(me.name||"")}" autocomplete="off" maxlength="80" placeholder="Your full name"></label>
-      <p class="gate-msg" id="gMsg" role="alert">${bad?`You chose class ${esc(me.cls)}, but this is a Year ${y} lesson. Choose your Year ${y} class.`:""}</p>
-      <button class="btn" type="submit">Start the lesson →</button></form></section>`;
-  const f=$("#gForm"),mi=$("#gM");if(!okM(me.mno))mi.focus();
-  f.onsubmit=e=>{e.preventDefault();const v=mi.value.toUpperCase().replace(/\s+/g,""),c=$("#gCls").value,msg=$("#gMsg");
-    if(!okM(v)){msg.textContent="Type your M Number: the letter M and then the numbers, e.g. M9093.";mi.focus();return}
-    if(!c){msg.textContent="Choose your class.";$("#gCls").focus();return}
-    me.mno="M"+v.replace(/^M/,"");me.cls=c;const n=$("#gName").value.trim();if(n)me.name=n;store.set("me",me);
-    window.Results&&Results.identityChanged();setupMe();route()}}
+function signedIn(y){const A=window.Auth&&Auth.me;if(!A)return false;if(A.role!=="student")return true;return YEARS[y].classes.includes(A.cls)}
+function gate(app,y){const A=window.Auth&&Auth.me;
+  if(!A){crumbs([["Year "+y,"y"+y],["Sign in"]]);return Auth.page(app,(location.hash||"").slice(1),"Sign in to start the lesson. Your teacher sees your progress.")}
+  const my=parseInt(A.cls,10);crumbs([["Year "+y,"y"+y],["Not your year group"]]);
+  app.innerHTML=`<section class="panel gate"><span class="eyebrow">Year ${y}</span><h1>This lesson is for Year ${y}</h1>
+    <p>You're signed in as <b>${esc(A.name)}</b> in class <b>${esc(A.cls)}</b>. Your lessons are in Year ${my||"?"}.</p>
+    <div class="row">${YEARS[my]?`<a class="btn" href="#y${my}">Go to my Year ${my} lessons →</a>`:""}</div>
+    <p class="small">In the wrong class? ${Auth.forgotLine().replace("Forgot your M Number or password? ","").replace(" to reset it."," to fix it.")}</p></section>`}
 
 /* ---------- pages ---------- */
 function home(app){
@@ -146,7 +136,7 @@ function subjectPage(app,y,sub){const Y=YEARS[y];const S=SUBJECTS[sub];if(!Y||!S
 function lessonShell(app,o){
   /* o: {key, unit, steps:[{k,name,min}], render(stepKey, stage, ctx), pdf(state)} */
   const K=o.key;let S=store.get(K,{done:{},step:0});S.done=S.done||{};const save=()=>{store.set(K,S);window.Results&&Results.queue(K,S)};
-  if(window.Results&&Results.enabled()&&(!me.mno||!me.cls))setTimeout(()=>toast(T("Add your M Number and class at the top so your teacher can see your progress.","اكتب رقمك المدرسي (M Number) واختر صفّك في الأعلى ليرى معلمك تقدّمك.")),800);
+  if(window.Auth&&Auth.me&&Auth.me.role!=="student")setTimeout(()=>toast("Staff preview: your answers aren't saved to a student account."),800);
   app.setAttribute("data-unit",o.unit||"msc");
   app.innerHTML=`<div class="lesson"><div class="clock" id="clock"><span class="time" id="ctime">00:00</span><div class="phase"><div id="cphase"></div><div class="bar" id="cbar">${o.steps.filter(s=>s.min).map(s=>`<i class="todo" style="width:${s.min/40*100}%"></i>`).join("")}</div></div><div class="row"><button class="btn sm" id="cgo" type="button">${T("Start","ابدأ")}</button><button class="btn sm alt" id="creset" type="button">${T("Reset","إعادة")}</button></div></div>
     <nav class="steps" id="steps" aria-label="Lesson steps"></nav><section class="stage" id="stage"></section></div>`;
@@ -467,5 +457,6 @@ function evidenceHunt(C,ctx){const S=ctx.S;S.ev=S.ev||[];const sents=sentencesOf
   box.append(tx,el("div",{class:"row"},chk),fb);return box}
 
 /* ---------- boot ---------- */
-setupMe();route();window.Results&&Results.syncAll();
+const boot=()=>{setupMe();route();window.Results&&Results.syncAll()};
+if(window.Auth){$("#app").innerHTML=`<p class="small" style="padding:24px">Loading EduGhaf…</p>`;Auth.init().then(boot,boot)}else boot();
 })();

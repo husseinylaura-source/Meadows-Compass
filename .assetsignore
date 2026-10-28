@@ -1,0 +1,10 @@
+.git
+.github
+node_modules
+src
+wrangler.jsonc
+.assetsignore
+.wrangler
+teacher-dashboard
+CLOUDFLARE-SETUP.md
+*.md

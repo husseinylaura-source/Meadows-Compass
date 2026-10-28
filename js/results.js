@@ -1,6 +1,6 @@
 /* EduGhaf – lesson results for the teacher dashboard.
-   Works out each lesson's % and sends it (with the student's M Number, name and class) to the Google Sheet
-   set in js/config.js. Answers stay on the student's device; only scores are sent.
+   Works out each lesson's % and saves the lesson (answers + %) to the signed-in student's account
+   (see js/auth.js). The server also copies each result to the Google Sheet as a backup.
 
    Lesson % = autoWeight × (auto-marked score) + stepsWeight × (lesson steps completed)
    Auto-marked: quiz multiple choice, Challenge sort/order games, Literacy reading quiz,
@@ -86,53 +86,49 @@ function score(key, S){
 function started(S){ return S && ((S.done && Object.keys(S.done).length) ||
   Object.keys(S).some(k => !["done","step"].includes(k))); }
 
-function student(){ const me = get("me", {});
-  const m = String(me.mno||"").toUpperCase().replace(/\s+/g,"").match(/^M?(\d{3,7})$/);
-  return { name: String(me.name||"").trim().replace(/\s+/g," "), cls: me.cls || "", mno: m ? "M" + m[1] : "" }; }
+function student(){ const me = window.Auth && Auth.me;
+  return me && me.role === "student" ? { name: me.name, cls: me.cls, mno: me.display } : { name: "", cls: "", mno: "" }; }
+function enabled(){ const me = window.Auth && Auth.me; return !!(me && me.role === "student" && !me.mustChange); }
 
-function send(payload){
-  const url = CFG.resultsUrl; if(!url) return false;
-  const body = JSON.stringify(payload);
-  try{ if(navigator.sendBeacon && navigator.sendBeacon(url, new Blob([body], {type:"text/plain;charset=utf-8"}))) return true; }catch(e){}
-  try{ fetch(url, {method:"POST", mode:"no-cors", keepalive:true, headers:{"Content-Type":"text/plain;charset=utf-8"}, body}).catch(() => {}); return true; }catch(e){ return false; }
-}
-
-/* Send a lesson's result if it changed since the last send for this student. */
+/* Save a lesson to the student's account if it changed since the last save. */
 function report(key, S){
-  if(!CFG.resultsUrl) return;
-  const me = student(); if(!me.mno || !me.cls || !started(S)) return;
-  const r = score(key, S); if(!r) return;
-  // Only send for the student's own year group (a Year 8 class doing a Year 8 lesson).
-  const clsYear = parseInt(me.cls, 10); if(clsYear && clsYear !== r.year) return;
-  const payload = Object.assign({ v: 2, mno: me.mno, student: me.name, cls: me.cls }, r);
-  const sig = JSON.stringify(payload);
+  if(!enabled() || !S) return false;
+  const sig = JSON.stringify(S);
   const sent = get("sent", {});
-  if(sent[key] === sig) return;
-  if(send(Object.assign({ sentAt: new Date().toISOString() }, payload))){ sent[key] = sig; set("sent", sent); }
+  if(sent[key] === sig) return false;
+  let r = started(S) ? score(key, S) : null;
+  // Results count for the student's own year group (a Year 8 class doing a Year 8 lesson).
+  const clsYear = parseInt(student().cls, 10); if(r && clsYear && clsYear !== r.year) r = null;
+  Auth.save(key, S, r);
+  sent[key] = sig; set("sent", sent);
+  return true;
 }
 
 const timers = {};
-function queue(key, S){ clearTimeout(timers[key]); timers[key] = setTimeout(() => { delete timers[key]; report(key, S); }, 2500); }
-function flush(){ Object.keys(timers).forEach(k => { clearTimeout(timers[k]); delete timers[k]; report(k, get(k, null)); }); }
+let pushTimer = null;
+function pushSoon(){ clearTimeout(pushTimer); pushTimer = setTimeout(() => Auth.push(false).then(ok => { if(!ok) setTimeout(pushSoon, 20000); }), 400); }
+function queue(key, S){ clearTimeout(timers[key]); timers[key] = setTimeout(() => { delete timers[key]; if(report(key, S)) pushSoon(); }, 2500); }
+function flush(){ Object.keys(timers).forEach(k => { clearTimeout(timers[k]); delete timers[k]; report(k, get(k, null)); }); if(window.Auth) Auth.push(true); }
 
-/* Send every lesson saved on this device (catches up lessons done before sending was switched on). */
+/* Save every lesson on this device that hasn't been saved to the account yet (e.g. after a lost connection). */
 function syncAll(){
-  if(!CFG.resultsUrl) return;
+  if(!enabled()) return;
+  let any = false;
   try{
     for(let i = 0; i < localStorage.length; i++){
       const k = localStorage.key(i); if(!k || k.indexOf(PREFIX) !== 0) continue;
       const key = k.slice(PREFIX.length); if(!/^y\d+-/.test(key) || key.indexOf(":") >= 0) continue;
-      report(key, get(key, null));
+      if(report(key, get(key, null))) any = true;
     }
   }catch(e){}
+  if(any) pushSoon();
 }
-
-/* When a student changes name or class, resend everything under the new details. */
-let idTimer = null;
-function identityChanged(){ set("sent", {}); clearTimeout(idTimer); idTimer = setTimeout(syncAll, 3000); }
+function markSaved(items){ const sent = get("sent", {}); Object.keys(items || {}).forEach(k => sent[k] = JSON.stringify(items[k])); set("sent", sent); }
+function identityChanged(){}
 
 window.addEventListener("pagehide", flush);
 document.addEventListener("visibilitychange", () => { if(document.visibilityState === "hidden") flush(); });
+setInterval(() => { if(enabled()) Auth.push(false); }, 60000);
 
-window.Results = { queue, flush, syncAll, identityChanged, score, lessonInfo, enabled: () => !!CFG.resultsUrl, student };
+window.Results = { queue, flush, syncAll, identityChanged, score, lessonInfo, enabled, student, markSaved };
 })();

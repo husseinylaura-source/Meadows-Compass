@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>EduGhaf</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' rx='44' fill='%231F5C3F'/%3E%3Cpath d='M34 98 C34 68 66 50 100 50 C134 50 166 68 166 98 C154 91 143 96 131 90 C120 97 111 92 100 97 C89 92 80 97 69 90 C57 96 46 91 34 98 Z' fill='%23FBF7EE'/%3E%3Cpath d='M100 148 C100 126 91 112 76 101 M100 148 C100 126 109 112 124 101 M100 130 L100 97' fill='none' stroke='%23FBF7EE' stroke-width='9' stroke-linecap='round'/%3E%3Cpath d='M26 150 Q63 134 100 150 Q137 134 174 150 L174 164 Q137 148 100 164 Q63 148 26 164 Z' fill='%23E7C98A'/%3E%3C/svg%3E">
 <meta name="description" content="EduGhaf · Empowering every learner · تمكين كل متعلّم">
@@ -83,6 +84,20 @@ button{font:inherit;color:inherit;cursor:pointer}
 .me #stuM{width:104px;text-transform:uppercase}
 .me #stuM.bad{border-color:var(--bad);background:var(--bad-soft)}
 .me label{font-size:13px;font-weight:700;color:var(--muted)}
+.me-who{display:flex;flex-direction:column;line-height:1.2;margin-right:4px}
+.me-who b{font-size:15px}
+.auth .pw{display:flex;gap:8px;align-items:center}
+.auth .pw input{flex:1;min-width:0}
+.auth .forgot{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.auth .chk{display:flex;gap:8px;align-items:center;font-weight:400}
+.sd-steps td.c{text-align:center}
+.sd-steps .ok{color:var(--good,#1d7a46);font-weight:800}
+.sd-steps .no{color:var(--muted)}
+.sd-detail-pick{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:10px}
+.sd-accts .row{margin-bottom:8px}
+.sd-accts table td,.sd-accts table th{white-space:nowrap}
+.sd-backup .row{gap:10px;flex-wrap:wrap}
+.sd-progress{font-size:14px;color:var(--muted)}
 
 /* home */
 .home-hero{display:grid;gap:10px;padding-block:8px}
@@ -373,7 +388,6 @@ footer{font-size:13.5px;color:var(--muted);max-width:80ch}
 :root{--b-below:#f6d3cf;--b-below-ink:#7a1c12;--b-towards:#fbe7b5;--b-towards-ink:#6b4e00;--b-meeting:#c7ead6;--b-meeting-ink:#0d5132;--b-exceeding:#c9dbf7;--b-exceeding-ink:#123a7a;--b-none:#e6ebec;--b-none-ink:#566870}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--b-below:#4a2421;--b-below-ink:#f7b9b2;--b-towards:#4a3a14;--b-towards-ink:#f6d68c;--b-meeting:#17402b;--b-meeting-ink:#9fe2bb;--b-exceeding:#1c2f52;--b-exceeding-ink:#adc8f5;--b-none:#22343a;--b-none-ink:#9db0b6}}
 :root[data-theme="dark"]{--b-below:#4a2421;--b-below-ink:#f7b9b2;--b-towards:#4a3a14;--b-towards-ink:#f6d68c;--b-meeting:#17402b;--b-meeting-ink:#9fe2bb;--b-exceeding:#1c2f52;--b-exceeding-ink:#adc8f5;--b-none:#22343a;--b-none-ink:#9db0b6}
-body.staff .me{display:none}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .staff-lock{max-width:520px;margin:6vh auto 0}
 .staff-lock h1{font-size:clamp(28px,4.4vw,40px)}
@@ -475,7 +489,7 @@ body.staff .me{display:none}
 .sd-empty h2{font-size:clamp(20px,2.6vw,25px)}
 @media (max-width:760px){.sd-filters,.sd-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.bands{grid-template-columns:1fr}}
 @media print{
-  body.staff .topbar,body.staff footer,.sd-actions,.sd-filters,.sd-ph input,.chk,#toast,#sdLists,#sdStaff{display:none!important}
+  body.staff .topbar,body.staff footer,.sd-actions,.sd-filters,.sd-ph input,.chk,#toast,#sdLists,#sdStaff,#sdAccts,#sdAdmin,#sdDetail{display:none!important}
   body.staff{background:#fff;font-size:12px}
   .panel,.kpi{break-inside:avoid;border-color:#ccc}
   .tscroll{overflow:visible}
@@ -487,14 +501,10 @@ body.staff .me{display:none}
 <div class="wrap">
   <div class="topbar">
     <nav class="crumbs" id="crumbs" aria-label="Breadcrumb"></nav>
-    <div class="me">
-      <label for="stuName">Name</label><input id="stuName" type="text" placeholder="Your full name" autocomplete="off">
-      <label for="stuClass">Class</label><select id="stuClass"></select>
-      <label for="stuM">M Number</label><input id="stuM" type="text" placeholder="e.g. M9093" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" maxlength="9">
-    </div>
+    <div class="me" id="meBar"></div>
   </div>
   <main id="app"></main>
-  <footer>Emirates International School – Meadows · MSC, Social Studies, Moral Education and Literacy · 2026–27. Your answers are saved on this device. At the end of each lesson, download your work and upload it to ManageBac. · <a href="#teacher">Staff</a></footer>
+  <footer>Emirates International School – Meadows · MSC, Social Studies, Moral Education and Literacy · 2026–27. Your work is saved to your EduGhaf account. At the end of each lesson, download your work and upload it to ManageBac. · <a href="#teacher">Staff</a></footer>
 </div>
 <div class="toast" id="toast" hidden></div>
 
@@ -518,6 +528,7 @@ body.staff .me{display:none}
 <script src="data/lit-y7-u1.js"></script>
 <script src="data/videos.js"></script>
 <script src="js/config.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/results.js"></script>
 <script src="js/teacher.js"></script>
 <script src="js/app.js"></script>

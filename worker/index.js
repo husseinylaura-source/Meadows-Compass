@@ -1,7 +1,7 @@
 /* EduGhaf on Cloudflare Workers: /api/* goes to the API, everything else is the website (static assets). */
 import { onRequest } from "../functions/api/[[path]].js";
 
-const VERSION = "2026-11-02 · login-check";
+const VERSION = "2026-11-02 · login-fix";
 const TEXT = /^(text\/|application\/(javascript|json|xml)|image\/svg\+xml)/;
 
 export default {

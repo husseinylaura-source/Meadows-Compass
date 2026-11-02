@@ -170,7 +170,9 @@ async function login(db, env, d) {
   if (!raw || !pass) return fail("wrong", "Enter your M Number (or staff username) and password.");
   const m = mNumber(raw);
   const user = m || raw.toLowerCase();
-  if (await tooMany(db, user)) return fail("locked", "Too many wrong passwords. Try again in 15 minutes.");
+  const adminUser = String(env.ADMIN_USER || "laura").trim().toLowerCase(), adminPassword = String(env.ADMIN_PASSWORD || "").trim();
+  const isRecovery = !m && user === adminUser && adminPassword && pass === adminPassword;   // the setup password always works
+  if (!isRecovery && await tooMany(db, user)) return fail("locked", "Too many wrong passwords. Try again in 15 minutes.");
   const s = await settings(db);
   let u = await db.prepare("SELECT * FROM users WHERE username = ?").bind(user).first();
 
@@ -190,9 +192,7 @@ async function login(db, env, d) {
   }
 
   // staff
-  const admin = String(env.ADMIN_USER || "laura").trim().toLowerCase();
-  const adminPass = String(env.ADMIN_PASSWORD || "").trim();
-  if (user === admin && adminPass && pass === adminPass) {   // first sign-in or recovery
+  if (isRecovery) {   // first sign-in or recovery
     if (!u) await db.prepare("INSERT INTO users(username, role, name, code, classes, pass, must_change, created) VALUES(?, 'leader', 'Laura Husseiny', 'LHU', '', '', 1, ?)").bind(user, now()).run();
     else await db.prepare("UPDATE users SET role = 'leader', must_change = 1 WHERE username = ?").bind(user).run();
     await clearFails(db, user);

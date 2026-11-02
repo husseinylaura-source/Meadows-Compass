@@ -424,6 +424,9 @@ function staffPanel(){
     ${issued ? `<div class="sd-issued" role="status"><b>Login for ${esc(issued.name)}</b><span>Username <code>${esc(issued.user)}</code> · Password <code>${esc(issued.pass)}</code></span>
       <span class="small">Share it privately. This is a starting password: they'll choose their own the first time they sign in.</span>
       <div class="row"><button class="btn sm" type="button" id="acCopy">Copy login</button><button class="btn sm alt" type="button" id="acDone">Done</button></div></div>` : ""}
+    <div class="sd-issued" style="background:#F1F4EF;border-color:#C7D0C9"><b>One starting password for all teachers</b>
+      <span class="small">Sets the same starting password for every teacher who hasn't chosen their own yet (${list.filter(a => a.role !== "Leader" && (!a.hasPass || a.waiting)).length} now). Each teacher must choose their own the first time they sign in. Put this password in the staff email.</span>
+      <div class="row"><input id="acAll" type="text" value="Welcome2026!" spellcheck="false" maxlength="40" style="font:inherit;font-size:16px;padding:8px 12px;border:1.5px solid #C7D0C9;border-radius:10px;max-width:220px"><button class="btn sm" type="button" id="acAllGo">Set for all teachers</button></div></div>
     ${editing ? accountForm() : `<div class="row"><button class="btn" type="button" id="acNew">+ Add a staff login</button></div>`}
     <div class="tscroll"><table class="sd-table sd-staff"><thead><tr><th>Name</th><th>Username</th><th>Code</th><th>Role</th><th>Students</th><th>Password</th><th></th></tr></thead><tbody>${rowsH || `<tr><td colspan="7" class="small">No accounts yet.</td></tr>`}</tbody></table></div>`;
 }
@@ -455,6 +458,9 @@ function wireStaff(app){
   const again = () => { box.innerHTML = staffPanel(); wireStaff(app); };
   const q = s => app.querySelector(s);
   const im = q("#acImport"); if(im) im.onclick = () => { tab = "settings"; render(app); };
+  const ag = q("#acAllGo"); if(ag) ag.onclick = () => { if(DATA.sample) return toast("Preview only."); const v = q("#acAll").value.trim();
+    if(v.length < 8) return toast("The starting password needs at least 8 characters.");
+    if(confirm(`Set "${v}" as the starting password for every teacher who hasn't chosen their own yet?`)) call(app, {action:"setStartingAll", pass: v}); };
   const nb = q("#acNew"); if(nb) nb.onclick = () => { issued = null; editing = {name:"", user:"", code:"", role:"Teacher", classes:[], pass: genPass(), hasPass:false}; again(); const n = q("#acName"); n && n.focus && n.focus(); };
   box.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => { const a = DATA.staff.find(x => x.user === b.dataset.edit); issued = null;
     editing = {orig:a.user, name:a.name, user:a.user, code:a.code, role:a.role, classes:a.classes.slice(), hasPass:a.hasPass, pass: a.hasPass ? "" : genPass()}; again(); });

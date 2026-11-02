@@ -274,6 +274,7 @@ async function staff(db, env, w, d) {
   else if (a === "saveStaff" || a === "deleteStaff") r = await staffAdmin(db, w, d);
   else if (a === "importRoster") r = w.role === "leader" ? await importRoster(db, d) : { error: "denied", message: "Only leaders can import the lists." };
   else if (a === "resetStudent") r = await resetStudent(db, w, d);
+  else if (a === "setStartingAll") r = w.role === "leader" ? await setStartingAll(db, d) : { error: "denied", message: "Only leaders can set passwords." };
   else if (a === "saveSettings") r = w.role === "leader" ? await saveSettings(db, d) : { error: "denied", message: "Only leaders can change settings." };
   else if (a === "studentWork") return await studentWork(db, w, d);
   else if (a === "backup") return w.role === "leader" ? await backup(db) : fail("denied", "Only leaders can download backups.");
@@ -348,6 +349,18 @@ async function staffAdmin(db, w, d) {
     if (pass) await db.prepare("DELETE FROM sessions WHERE username = ?").bind(user).run();
   } else await db.prepare("INSERT INTO users(username, role, name, code, classes, pass, must_change, created) VALUES(?,?,?,?,?,?,?,?)").bind(user, role, name, code, classes.join(", "), hashed, must, now()).run();
   return { message: (existing ? "Saved " : "Created ") + name.replace(/\.$/, "") + (pass ? ". They'll choose their own password when they first sign in." : ".") };
+}
+
+/* Give every teacher who hasn't chosen their own password yet the same starting password (they must change it at first sign-in). */
+async function setStartingAll(db, d) {
+  const pass = String(d.pass || "").trim();
+  if (pass.length < 8) return { error: "bad", message: "The starting password needs at least 8 characters." };
+  const list = (await db.prepare("SELECT username FROM users WHERE role = 'teacher' AND (pass = '' OR pass IS NULL OR must_change = 1)").all()).results || [];
+  if (!list.length) return { message: "Every teacher has already chosen their own password." };
+  const h = await hashPass(pass);
+  const ops = list.map(u => db.prepare("UPDATE users SET pass = ?, must_change = 1 WHERE username = ?").bind(h, u.username));
+  for (let i = 0; i < ops.length; i += 90) await db.batch(ops.slice(i, i + 90));
+  return { message: "Starting password set for " + list.length + " teacher" + (list.length === 1 ? "" : "s") + ". They'll choose their own when they first sign in." };
 }
 
 async function resetStudent(db, w, d) {

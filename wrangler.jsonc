@@ -1,0 +1,13 @@
+{
+  // EduGhaf on Cloudflare Workers: the website (static files) + the API in worker/index.js
+  "name": "edughaf",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": ".", "binding": "ASSETS", "not_found_handling": "none" },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "edughaf", "database_id": "508e0f00-c661-4728-a0b5-bb43559bdaea" }
+  ],
+  // keep ADMIN_PASSWORD / STUDENT_PASSWORD set in the dashboard
+  "keep_vars": true,
+  "observability": { "enabled": true }
+}

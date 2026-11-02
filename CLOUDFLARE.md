@@ -12,6 +12,11 @@ The site now has accounts and saves every student's work:
 
 Bands: Below 0–39 · Working towards 40–59 · Meeting 60–79 · Exceeding 80–100.
 
+## Workers or Pages
+The repo works either way. As a **Worker** (what the dashboard creates by default), `wrangler.jsonc` sets everything up:
+the database ID is already in it, and pushes to GitHub deploy automatically. Add `ADMIN_PASSWORD` under Settings → Variables and secrets.
+The steps below are for a **Pages** project.
+
 ## 1. Create the site
 1. Sign in at **dash.cloudflare.com** (a free account is fine).
 2. **Workers & Pages → Create → Pages → Connect to Git** → choose GitHub → repository **Meadows-Compass**.

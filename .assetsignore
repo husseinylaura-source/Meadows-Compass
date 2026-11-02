@@ -1,0 +1,7 @@
+.git
+worker
+functions
+teacher-dashboard
+wrangler.jsonc
+.assetsignore
+*.md

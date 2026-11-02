@@ -1,13 +1,24 @@
 /* EduGhaf on Cloudflare Workers: /api/* goes to the API, everything else is the website (static assets). */
 import { onRequest } from "../functions/api/[[path]].js";
 
+const VERSION = "2026-11-02 · utf8-fix";
+const TEXT = /^(text\/|application\/(javascript|json|xml)|image\/svg\+xml)/;
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (url.pathname === "/version") return new Response("EduGhaf " + VERSION, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
     if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
       const path = url.pathname.replace(/^\/api\/?/, "").split("/").filter(Boolean);
       return onRequest({ request, env, ctx, params: { path } });
     }
-    return env.ASSETS.fetch(request);
+    const res = await env.ASSETS.fetch(request);
+    const type = res.headers.get("Content-Type") || "";
+    if (TEXT.test(type) && !/charset/i.test(type)) {   // Arabic text needs UTF-8 on every page and script
+      const r = new Response(res.body, res);
+      r.headers.set("Content-Type", type + "; charset=utf-8");
+      return r;
+    }
+    return res;
   }
 };

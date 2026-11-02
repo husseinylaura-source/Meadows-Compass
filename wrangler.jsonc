@@ -3,7 +3,7 @@
   "name": "edughaf",
   "main": "worker/index.js",
   "compatibility_date": "2026-10-01",
-  "assets": { "directory": ".", "binding": "ASSETS", "not_found_handling": "none" },
+  "assets": { "directory": ".", "binding": "ASSETS", "not_found_handling": "none", "run_worker_first": true },
   "d1_databases": [
     { "binding": "DB", "database_name": "edughaf", "database_id": "508e0f00-c661-4728-a0b5-bb43559bdaea" }
   ],

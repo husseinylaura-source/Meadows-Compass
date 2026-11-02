@@ -3,10 +3,8 @@
 Interactive lessons for Emirates International School – Meadows (2026–27):
 MSC (Years 7–10), Social Studies (Years 7–10), Moral Education (Years 7–13) and Literacy (Years 7–11).
 
-## Put it on GitHub Pages
-1. Create a repository and upload everything in this folder (index.html, js/, data/, images/, videos/).
-2. Settings → Pages → Deploy from branch → main / root.
-3. Share the Pages link with students.
+## Put it online
+See `CLOUDFLARE.md`.
 
 ## Add videos
 Open `data/videos.js` and follow the example. Use a YouTube link, or upload an .mp4 to `videos/`.
@@ -30,9 +28,11 @@ Then add a `<script src="data/…"></script>` line for each new file in `index.h
 ## Moral Education
 - All years are in Arabic. Years 7–8 come from the department's decks; Years 9–13 (`data/y9-me.js` … `data/y13-me.js`) were written from the MOE 2025–26 Term 1 book contents. Replace any lesson by editing its file.
 
-## Teacher dashboard (student progress and bands)
-Students enter their M Number and class at the top of the site. Each lesson's % (auto-marked work + steps
-completed) goes to a Google Sheet that reads the school's master student list. Teachers sign in on the
-**Staff** page (`#teacher`) and see only their own students: completion, term averages and bands
-(Below / Working towards / Meeting / Exceeding). Setup: `teacher-dashboard/SETUP.md`.
-The Sheet's web address goes in `js/config.js`; leave it empty to switch sending off.
+## Accounts, saved work and the teacher dashboard (Cloudflare)
+The site runs on Cloudflare Pages with a D1 database (`functions/api`). Students sign in with their M Number,
+teachers and the admin with a username; everyone chooses their own password on first sign-in. All work is saved
+to the student's account; teachers see lesson %, term averages and bands (Below / Working towards / Meeting /
+Exceeding) for their own students and can open any student's saved work. Setup: `CLOUDFLARE.md`.
+
+## Lesson length
+Every MSC, Social Studies and Moral Education lesson fits 40 minutes with no group work (`js/fit40.js`).

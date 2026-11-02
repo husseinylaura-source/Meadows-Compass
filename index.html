@@ -1,5 +1,5 @@
 <title>EduGhaf</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' rx='44' fill='%231F5C3F'/%3E%3Cpath d='M34 98 C34 68 66 50 100 50 C134 50 166 68 166 98 C154 91 143 96 131 90 C120 97 111 92 100 97 C89 92 80 97 69 90 C57 96 46 91 34 98 Z' fill='%23FBF7EE'/%3E%3Cpath d='M100 148 C100 126 91 112 76 101 M100 148 C100 126 109 112 124 101 M100 130 L100 97' fill='none' stroke='%23FBF7EE' stroke-width='9' stroke-linecap='round'/%3E%3Cpath d='M26 150 Q63 134 100 150 Q137 134 174 150 L174 164 Q137 148 100 164 Q63 148 26 164 Z' fill='%23E7C98A'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="images/logo.svg">
 <meta name="description" content="EduGhaf · Empowering every learner · تمكين كل متعلّم">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -365,9 +365,11 @@ footer{font-size:13.5px;color:var(--muted);max-width:80ch}
 [dir="rtl"] .book h4{font-size:24px;line-height:1.5}
 [dir="rtl"] .book p,[dir="rtl"] .book li{line-height:2}
 [dir="rtl"] .scenario .q{transform:scaleX(-1);display:inline-block}
-.brand{display:inline-flex;align-items:center;gap:8px;--ghaf:#1F5C3F;--ghafsand:#C9963B}.brand svg{width:30px;height:24px;flex:none}.brand .b-edu{font-weight:400}
+.brand{display:inline-flex;align-items:center;gap:8px;--ghaf:#1F5C3F;--ghafsand:#C9963B}.brand img{width:30px;height:30px;flex:none}.brand .b-ghaf{color:#2E5E3E}.brand .b-edu{font-weight:400}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .brand{--ghaf:#8FC9A3;--ghafsand:#E7C98A}}
 :root[data-theme="dark"] .brand{--ghaf:#8FC9A3;--ghafsand:#E7C98A}
+:root[data-theme="dark"] .brand .b-ghaf{color:#8FC9A3}@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .brand .b-ghaf{color:#8FC9A3}}
+.lockup{display:flex;align-items:center;gap:16px;margin:0 0 10px}.lockup img{width:76px;height:76px;flex:none}.lockup .wm{font-family:var(--display);font-size:40px;line-height:1;color:#2E5E3E}.lockup .wm b{font-weight:800}.lockup .wm span{font-weight:400}.lockup .tagline{display:block;font-size:14px;color:var(--muted);margin-top:6px}
 
 /* ---------- Staff dashboard (#teacher) ---------- */
 :root{--b-below:#f6d3cf;--b-below-ink:#7a1c12;--b-towards:#fbe7b5;--b-towards-ink:#6b4e00;--b-meeting:#c7ead6;--b-meeting-ink:#0d5132;--b-exceeding:#c9dbf7;--b-exceeding-ink:#123a7a;--b-none:#e6ebec;--b-none-ink:#566870}
@@ -482,6 +484,58 @@ body.staff .me{display:none}
   .sd-table td.missed{min-width:0}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+.topbar .me .who{font-size:14px}.topbar .me .saved{color:var(--muted)}.topbar .me .saved.warn{color:var(--bad)}
+body.signin .topbar .me{display:none}.signin-card{max-width:520px;margin:28px auto}.signin-card h1{font-size:26px;margin:8px 0}
+.viewbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:#FFF6DD;border:1px solid #E6CF8F;border-radius:12px;padding:10px 14px;margin:0 0 12px;font-size:14px}
+body.viewing .lesson .clock{display:none}
+.sd-admin .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.sd-admin label{display:grid;gap:4px;font-size:14px}
+
+/* ---------- staff report (EduGhaf Teacher Report design) ---------- */
+body.staff .topbar,body.staff footer{display:none}
+body.staff{background:#F5F6F1}
+body.staff #app{color:#1B2420}
+.rp-bar{background:#1F4D3A;color:#fff;padding:14px 24px;margin:0 calc(50% - 50vw);border-radius:0}
+.rp-in{max-width:1200px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.rp-brand{display:flex;align-items:center;gap:12px}.rp-brand img{width:38px;height:38px;background:#fff;border-radius:50%}
+.rp-brand div{display:flex;flex-direction:column}.rp-brand b{font-weight:800;font-size:20px;letter-spacing:-.01em}.rp-brand span{font-size:12px;color:#CFE0D6}
+.rp-nav{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.rp-tab{font:inherit;color:#DCE8E1;text-decoration:none;font-size:14px;font-weight:500;padding:10px 14px;border-radius:8px;background:transparent;border:0;cursor:pointer}
+.rp-tab[aria-current="true"]{color:#fff;font-weight:600;background:rgba(255,255,255,.14)}
+.rp-sep{width:1px;height:24px;background:rgba(255,255,255,.25);margin:0 6px}.rp-me{font-size:14px}
+.rp-out{font:inherit;color:#E9D9A6;font-size:14px;font-weight:600;padding:10px 8px;background:none;border:0;cursor:pointer}
+.rp-main{max-width:1200px;margin:0 auto;padding:32px 0 48px;display:flex;flex-direction:column;gap:24px}
+.rp-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
+.rp-head>div:first-child{display:flex;flex-direction:column;gap:6px}
+.rp-eyebrow{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4A6B5C}
+.rp-head h1{margin:0;font-size:34px;line-height:1.15;font-weight:800;letter-spacing:-.02em;color:#1B2420}
+.rp-head p{margin:0;font-size:15px;color:#4B5550}.rp-demo{color:#8A4B12}
+.rp-btns{display:flex;flex-wrap:wrap;gap:10px}
+.rp-btn{font:inherit;font-size:14px;font-weight:600;padding:12px 18px;border-radius:10px;border:1px solid #1F4D3A;background:#fff;color:#1F4D3A;cursor:pointer}.rp-btn.solid{background:#1F4D3A;color:#fff}
+.rp-card{background:#fff;border:1px solid #DDE3DC;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:14px;color:#1B2420}
+.rp-card h2{margin:0;font-size:17px;font-weight:700}
+.rp-filters{flex-direction:row;flex-wrap:wrap;gap:14px;padding:16px}
+.rp-f{display:flex;flex-direction:column;gap:6px;flex:1 1 160px}.rp-f.wide{flex:2 1 220px}
+.rp-f label{font-size:12px;font-weight:700;color:#4B5550}
+.rp-f select,.rp-f input{font:inherit;font-size:14px;padding:10px 12px;border:1px solid #C7D0C9;border-radius:8px;background:#fff;color:#1B2420;min-height:44px;box-sizing:border-box}
+.rp-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.rp-kpi{padding:18px;gap:6px}.rp-kpi .l{font-size:13px;font-weight:600;color:#4B5550}.rp-kpi .v{font-size:36px;font-weight:800;letter-spacing:-.02em}.rp-kpi .s{font-size:13px;color:#4B5550}
+.rp-kpi.warn{background:#FBEFE9;border-color:#EBC9B9}.rp-kpi.warn *{color:#7A2810!important}
+.rp-dist{display:flex;height:22px;border-radius:6px;overflow:hidden;gap:2px}
+.rp-legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.rp-legend>div{display:flex;align-items:center;gap:10px}.rp-legend .sw{width:16px;height:16px;border-radius:4px;flex:none}
+.rp-legend b{display:block;font-size:14px}.rp-legend span:not(.sw){font-size:12px;color:#4B5550}
+.rp-th{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px}.rp-th span{font-size:13px;color:#4B5550}
+.rp-scroll{overflow-x:auto;border:1px solid #E6EAE5;border-radius:10px}
+.rp-table{width:100%;border-collapse:collapse;font-size:14px}
+.rp-table thead tr{background:#F1F4EF;text-align:left}.rp-table th{padding:12px 10px;font-size:12px;font-weight:700;color:#4B5550}
+.rp-table td{padding:8px 10px;border-top:1px solid #E6EAE5}.rp-table td.c,.rp-table th.c{text-align:center;padding-left:3px;padding-right:3px}
+.rp-table .nm{font-weight:600;white-space:nowrap}.rp-table .nm a{color:#1F4D3A}.rp-table .mn{color:#4B5550;font-variant-numeric:tabular-nums}.rp-table .avg{font-weight:800;font-variant-numeric:tabular-nums}
+.rp-table .missed{font-size:13px;color:#4B5550;min-width:220px}
+.rp-cell{display:inline-block;min-width:38px;padding:5px 0;border-radius:6px;font-weight:600;font-variant-numeric:tabular-nums}.rp-cell.none{color:#6B746F;background:#F3F4F2;font-weight:400}.rp-cell.prog{font-style:italic;outline:1px dashed currentColor;outline-offset:-2px}
+.rp-a{text-decoration:none}.rp-a:hover .rp-cell{box-shadow:0 0 0 2px #1F4D3A}
+.rp-pill{display:inline-block;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}.rp-pill.none{background:#EEF0EC;color:#4B5550}
+.rp-key{margin:10px 12px}.rp-foot{margin:0;font-size:13px;color:#4B5550}.rp-foot a{color:#1F4D3A}
+@media print{.rp-bar,.rp-btns,.rp-filters .wide,.rp-foot a{display:none!important}.rp-main{padding:0}.rp-card{break-inside:avoid}}
 </style>
 
 <div class="wrap">
@@ -494,7 +548,7 @@ body.staff .me{display:none}
     </div>
   </div>
   <main id="app"></main>
-  <footer>Emirates International School – Meadows · MSC, Social Studies, Moral Education and Literacy · 2026–27. Your answers are saved on this device. At the end of each lesson, download your work and upload it to ManageBac. · <a href="#teacher">Staff</a></footer>
+  <footer>Emirates International School – Meadows · MSC, Social Studies, Moral Education and Literacy · 2026–27. Your work is saved to your EduGhaf account as you go, and your teacher can see it. At the end of each lesson, download your work and upload it to ManageBac. · <a href="#teacher">Staff</a></footer>
 </div>
 <div class="toast" id="toast" hidden></div>
 
@@ -518,7 +572,9 @@ body.staff .me{display:none}
 <script src="data/literacy.js"></script>
 <script src="data/lit-y7-u1.js"></script>
 <script src="data/videos.js"></script>
+<script src="js/fit40.js"></script>
 <script src="js/config.js"></script>
 <script src="js/results.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/teacher.js"></script>
 <script src="js/app.js"></script>

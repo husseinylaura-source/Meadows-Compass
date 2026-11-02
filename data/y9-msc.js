@@ -303,7 +303,7 @@ window.MSC_DATA["y9-msc"] = [
   definition:["This term we learned","that strong, safe communities are built on shared values and responsibility (Unit 1), that diversity and tolerance make society richer (Unit 2), and that Africa has great civilizations, from ancient Egypt to Islamic Mali (Unit 3)."],
   numbers:[["2019","the UAE's Year of Tolerance, when the Document on Human Fraternity was signed in Abu Dhabi."],["1324","the year Mansa Musa of Mali made his famous Hajj to Makkah."]],
   terms:[["Community","People who interact, share something in common and feel they belong."],["Social group","Two or more people who interact regularly and share goals."],["Tolerance","Respecting people who are different from us."],["Civilization","An advanced society with cities, government, writing and trade."]],
-  uae:"UAE examples this term: Constitution Articles 15 and 25, the police number 999, the 2015 Anti-Discrimination Law, the 2019 Year of Tolerance, People of Determination, and the UAE's links with Africa.",
+  uae:"UAE examples this term: Constitution Articles 14, 15 and 25, the police number 999, the 2015 Anti-Discrimination Law, the 2019 Year of Tolerance, People of Determination, and the UAE's links with Africa.",
   values:["Responsibility","Tolerance","Curiosity"],
   groups:[
     ["Unit 1: Definition of Community","pp. 8–17",["People who interact, share something and feel they belong.","Types: local, interest, faith and online communities.","Constitution Article 15: the family is the basis of society."]],
@@ -324,7 +324,7 @@ window.MSC_DATA["y9-msc"] = [
     ["Which article of the UAE Constitution says the family is the basis of society?",["Article 15","Article 25","Article 99"],0],
     ["Respecting people whose beliefs are different from ours is:",["Prejudice","Tolerance","Peer pressure"],1],
     ["Which empire did Mansa Musa rule?",["Aksum","Egypt","Mali"],2],
-    ["What is the UAE police emergency number?",["999","911","112"],0],
+    ["What is the UAE police emergency number?",["999","911","990"],0],
     ["A family is an example of a:",["Secondary group","Primary group","Online community"],1],
     ["What does the UAE call people with disabilities?",["People of Determination","Special guests","Helpers"],0],
     ["How many countries are there in Africa?",["24","54","104"],1],

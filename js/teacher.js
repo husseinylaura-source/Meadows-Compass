@@ -26,59 +26,69 @@ let DATA = null, F = null, sortBy = {col:"cls", dir:1}, query = "", onlyMissed =
 
 function creds(){ try{ return JSON.parse(ss.get("who") || "null"); }catch(e){ return null; } }
 
+let tab = "reports";
+const api = (b) => window.Auth.api("staff", b);
+const signedIn = () => window.Auth && Auth.isStaff();
+
 function show(app, crumbs){
-  crumbs([["Staff dashboard"]]);
+  crumbs([["Staff"]]);
   document.body.classList.add("staff");
   app.setAttribute("data-unit","msc");
-  if(!CFG.resultsUrl && !DATA){ app.innerHTML = `<section class="panel staff-lock"><span class="eyebrow">Staff only</span><h1>Staff dashboard</h1><p>The results Sheet isn't connected yet. Add its web app address to <code>js/config.js</code> (steps in <code>teacher-dashboard/SETUP.md</code>).</p><div class="row"><button class="btn alt" id="sdDemo" type="button">Preview with sample data</button></div></section>`;
-    app.querySelector("#sdDemo").onclick = () => { DATA = sample(); F = defaults(DATA); render(app); }; return; }
   if(DATA) return render(app);
-  const c = creds();
-  if(c) return call(app, {action:"data"}, c);
+  if(window.Auth && Auth.offline) return lock(app, "Staff sign-in works on the EduGhaf site on Cloudflare, not on this copy.");
+  if(signedIn()){ if(Auth.session.mustChange) return Auth.changeForm(() => { location.hash = "teacher"; show(app, crumbs); }, true); return call(app, {action:"data"}); }
   lock(app);
 }
 
 function lock(app, msg){
-  app.innerHTML = `<section class="panel staff-lock">
-    <span class="eyebrow">Staff only</span><h1>Staff sign in</h1>
-    <p class="small">See lesson completion, term averages and achievement bands for your classes.</p>
+  app.innerHTML = `<section class="panel staff-lock signin-card"><div class="lockup"><img src="images/logo.svg" alt="EduGhaf logo"><div><div class="wm"><span>Edu</span><b>Ghaf</b></div><span class="tagline">Staff · Progress reports</span></div></div>
+    <h1>Staff sign in</h1>
+    <p class="small">See lesson completion, averages and MOE / KHDA bands for your classes, and open any student's saved work.</p>
     <form id="sdForm" class="sd-form">
       <label>Username<input id="sdUser" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
       <label>Password<input id="sdPass" type="password" autocomplete="current-password" required></label>
       <button class="btn" type="submit">Sign in</button></form>
     <p class="sd-msg" id="sdMsg" role="status">${esc(msg||"")}</p>
-    <p class="small">No account yet? Ask your Head of Teaching &amp; Learning to add you.</p>
+    <p class="small">First time? Use the starting password you were given; you'll then choose your own. No account yet? Ask your Head of Teaching &amp; Learning.</p>
     <div class="sd-demo"><span class="small">Want to see how it works first?</span><button class="btn sm alt" id="sdDemo2" type="button">See a demo with sample data</button></div></section>`;
-  app.querySelector("#sdForm").onsubmit = e => { e.preventDefault();
-    call(app, {action:"data"}, {user: app.querySelector("#sdUser").value.trim(), pass: app.querySelector("#sdPass").value}); };
+  const f = app.querySelector("#sdForm");
+  f.onsubmit = async e => { e.preventDefault(); const m = app.querySelector("#sdMsg"); m.textContent = "Signing in…";
+    try{
+      const d = await Auth.api("login", {user: app.querySelector("#sdUser").value.trim(), pass: app.querySelector("#sdPass").value});
+      if(!d.ok){ m.textContent = d.message || "Couldn't sign in."; return; }
+      if(d.role === "student"){ m.textContent = "This is the staff page. Students sign in on the home page."; return; }
+      try{ localStorage.setItem("eg:owner", d.user); }catch(x){}
+      Auth.signIn({token: d.token, user: d.user, role: d.role, name: d.name, code: d.code || "", mustChange: d.mustChange});
+      Auth.bar();
+      if(d.mustChange) return Auth.changeForm(() => { location.hash = "teacher"; document.body.classList.add("staff"); call(app, {action:"data"}); }, true);
+      call(app, {action:"data"});
+    }catch(err){ m.textContent = "Couldn't reach EduGhaf. Check the connection."; }
+  };
   app.querySelector("#sdUser").focus();
   const dm = app.querySelector("#sdDemo2"); if(dm) dm.onclick = () => { DATA = sample(); F = defaults(DATA); render(app); };
 }
 
-/* Every request to the Sheet: sign in, load data, add or remove a student. */
-async function call(app, body, who){
+/* Every request to the EduGhaf database: load data, add or remove a student, manage logins and settings. */
+async function call(app, body){
   if(loading) return; loading = true;
-  who = who || creds();
-  const m = app.querySelector("#sdMsg"); if(m) m.textContent = "Signing in…";
-  if(DATA) setBusy(app, true);
+  if(DATA) setBusy(app, true); else app.innerHTML = `<p class="notebar">Loading your classes…</p>`;
   try{
-    const r = await fetch(CFG.resultsUrl, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"},
-      body: JSON.stringify(Object.assign({}, body, {user: who && who.user, pass: who && who.pass}))});
-    const d = await r.json();
+    const d = await api(body);
     loading = false;
     if(!d.ok){
-      if(DATA && (d.error === "denied" || d.error === "bad")){ setBusy(app, false); const m2 = app.querySelector("#acMsg"); if(m2 && body.action === "saveStaff") m2.textContent = d.message; return toast(d.message); }
-      ss.set("who", null); DATA = null; F = null; return lock(app, d.message || "Couldn't sign in.");
+      if(d.error === "expired" || d.error === "change"){ DATA = null; F = null; return lock(app, d.message); }
+      if(DATA){ setBusy(app, false); const m2 = app.querySelector("#acMsg"); if(m2 && body.action === "saveStaff") m2.textContent = d.message; return toast(d.message); }
+      return lock(app, d.message || "Couldn't load the dashboard.");
     }
-    ss.set("who", JSON.stringify(who)); DATA = d;
+    DATA = d;
     if(body.action === "saveStaff"){ editing = null; if(body.account.pass) issued = {name: body.account.name, user: body.account.user.trim().toLowerCase(), pass: body.account.pass}; }
     if(!F) F = defaults(d);
     render(app);
     if(d.message) toast(d.message);
   }catch(e){
     loading = false;
-    if(DATA){ setBusy(app, false); toast("Couldn't reach the Sheet. Check the connection."); }
-    else lock(app, "Couldn't reach the results Sheet. Check the connection, or that the web app is deployed for Anyone.");
+    if(DATA){ setBusy(app, false); toast("Couldn't reach EduGhaf. Check the connection."); }
+    else lock(app, "Couldn't reach EduGhaf. Check the connection.");
   }
 }
 function setBusy(app, on){ const b = app.querySelector("#sdRefresh"); if(b){ b.disabled = on; b.textContent = on ? "Refreshing…" : "Refresh"; } }
@@ -98,7 +108,7 @@ let listSub = "";
 function classLists(){
   const me = DATA.me || {}, mine = myClasses(), subs = (me.subjects && me.subjects.length) ? me.subjects : SUBJECTS;
   const title = me.role === "leader" ? "Class lists" : "My students";
-  if(!mine.length) return `<div class="sd-ph"><h2>${title}</h2></div><p class="small">${me.role === "leader" ? "No students yet. Check the Student list Sheet link on the Settings tab, then press Import now below." : "No students are linked to your teacher code yet. Ask your Head of Teaching &amp; Learning to check your account."}</p>`;
+  if(!mine.length) return `<div class="sd-ph"><h2>${title}</h2></div><p class="small">${me.role === "leader" ? "No students yet. Upload the school student list under Settings." : "No students are linked to your teacher code yet. Ask your Head of Teaching &amp; Learning to check your account."}</p>`;
   if(!mine.includes(listCls)) listCls = mine.includes(F.cls) ? F.cls : mine[0];
   const inClass = (DATA.students || []).filter(x => x.cls === listCls);
   const subsHere = subs.filter(x => inClass.some(y => y.subject === x));
@@ -114,7 +124,7 @@ function classLists(){
       <label class="sd-inline">Subject <select id="lSub">${options(subs, listSub)}</select></label><span class="small">${list.length} student${list.length===1?"":"s"}</span></div>
     ${unlisted.length ? `<div class="sd-unlisted"><b>Sending ${esc(listSub)} work in ${esc(listCls)}, but their M Number isn't on the school list</b><span class="small">Add them if they're yours. If the M Number looks mistyped, ask the student to correct it at the top of the website.</span>
       <div class="row">${unlisted.map(st => `<button class="btn sm alt" type="button" data-add="${esc(st.m)}" data-name="${esc(st.name)}">+ ${esc(st.name)} · ${esc(st.m)}</button>`).join("")}</div></div>` : ""}
-    <ul class="sd-roster">${list.map(x => `<li><span>${esc(x.name)}</span><span class="small">${esc(x.m)}${me.role === "leader" ? " · " + esc((x.teachers || []).join(", ")) : ""}${x.shared ? " · shared list" : x.addedBy ? (x.addedBy === me.user ? " · added by you" : " · added") : ""}</span>${canRemove(x) ? `<button class="x" type="button" data-rm="${esc(x.m)}" data-name="${esc(x.name)}" aria-label="Remove ${esc(x.name)}" title="Remove">×</button>` : ""}</li>`).join("") || `<li class="small">No students on this list yet.</li>`}</ul>
+    <ul class="sd-roster">${list.map(x => `<li><span>${esc(x.name)}</span><span class="small">${esc(x.m)}${me.role === "leader" ? " · " + esc((x.teachers || []).join(", ")) : ""}${x.login === "own" ? " · own password" : x.login === "class" ? " · class password" : " · not signed in yet"}${x.shared ? " · shared list" : x.addedBy ? (x.addedBy === me.user ? " · added by you" : " · added") : ""}</span>${x.login === "own" ? `<button class="btn sm alt" type="button" data-reset="${esc(x.m)}" data-name="${esc(x.name)}" title="Let them sign in with the class password again">Reset password</button>` : ""}${canRemove(x) ? `<button class="x" type="button" data-rm="${esc(x.m)}" data-name="${esc(x.name)}" aria-label="Remove ${esc(x.name)}" title="Remove">×</button>` : ""}</li>`).join("") || `<li class="small">No students on this list yet.</li>`}</ul>
     <form id="lAdd" class="sd-addform">
       <label>M Number<input id="lM" type="text" placeholder="e.g. M9093" autocomplete="off" spellcheck="false" maxlength="9" required></label>
       <label>Full name <span class="small">only if they're new to the school list</span><input id="lName" type="text" autocomplete="off" maxlength="80"></label>
@@ -131,6 +141,7 @@ function wireLists(app){
     if(!/^M?\d{3,7}$/i.test(String(m).replace(/\s+/g,""))) return toast("Enter the M Number, e.g. M9093.");
     change(app, "addStudent", {mno: m, name: app.querySelector("#lName").value, code: code ? code.value : ""}); };
   box.querySelectorAll("[data-add]").forEach(b => b.onclick = () => change(app, "addStudent", {mno: b.dataset.add, name: b.dataset.name}));
+  box.querySelectorAll("[data-reset]").forEach(b => b.onclick = () => { if(DATA.sample) return toast("Preview only."); if(confirm(`Reset ${b.dataset.name}'s password? They'll sign in with the class password and choose a new one.`)) call(app, {action:"resetStudent", mno: b.dataset.reset}); });
   box.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => { if(confirm(`Remove ${b.dataset.name} from the ${listCls} ${listSub} list?`)) change(app, "removeStudent", {mno: b.dataset.rm}); });
 }
 function change(app, action, x){
@@ -178,135 +189,197 @@ const clsCmp = (a,b) => parseInt(a) - parseInt(b) || String(a).localeCompare(Str
 
 function options(list, val, all){ return (all ? [`<option value="All">${all}</option>`] : []).concat(list.map(v => `<option ${v===val?"selected":""}>${esc(v)}</option>`)).join(""); }
 
+/* ---------- report (styled like the EduGhaf Teacher Report) ---------- */
+const BAND_STYLE = {
+  exceeding: {bg:"#1F4D3A", fg:"#FFFFFF", tint:"#DCEBE3", tfg:"#123326"},
+  meeting:   {bg:"#5FA48C", fg:"#0E2A20", tint:"#E8F3EE", tfg:"#1D4A3B"},
+  towards:   {bg:"#E8B547", fg:"#3D2C05", tint:"#FBF0D6", tfg:"#5C4307"},
+  below:     {bg:"#B4471F", fg:"#FFFFFF", tint:"#F8DED3", tfg:"#7A2810"}
+};
+const pill = b => b ? `<span class="rp-pill" style="background:${BAND_STYLE[b.k].bg};color:${BAND_STYLE[b.k].fg}">${b.name}</span>` : `<span class="rp-pill none">No work yet</span>`;
+const cell = (v, href, title) => { if(v == null) return `<span class="rp-cell none" title="Not started">—</span>`; const b = bandOf(v[0]), st = BAND_STYLE[b.k];
+  const inner = `<span class="rp-cell${v[1] ? "" : " prog"}" style="background:${st.tint};color:${st.tfg}" title="${esc(title)}">${v[0]}</span>`;
+  return href ? `<a href="${href}" class="rp-a">${inner}</a>` : inner; };
+
+function navBar(){
+  const me = DATA.me || {}, leader = me.role === "leader";
+  const t = (k, label) => `<button type="button" class="rp-tab" data-tab="${k}" aria-current="${tab === k}">${label}</button>`;
+  return `<header class="rp-bar"><div class="rp-in">
+    <div class="rp-brand"><img src="images/logo.svg" alt=""><div><b>EduGhaf</b><span>Staff · Progress reports</span></div></div>
+    <nav class="rp-nav" aria-label="Staff menu">${t("reports","Reports")}${t("students", leader ? "Class lists" : "My students")}${leader ? t("staff","Staff accounts") + t("settings","Settings") : ""}
+      <a class="rp-tab" href="#">Lessons</a><span class="rp-sep"></span>
+      <span class="rp-me">${esc(me.name || "")}${me.code ? " · " + esc(me.code) : ""}</span>
+      <button type="button" class="rp-out" id="sdPw">Password</button><button type="button" class="rp-out" id="sdLock">Sign out</button></nav></div></header>`;
+}
+
 function render(app){
+  const me = DATA.me || {};
+  if(tab !== "reports" && !(tab === "students" || me.role === "leader")) tab = "reports";
+  let body = "";
+  if(tab === "reports") body = reportHTML();
+  if(tab === "students") body = `<section class="rp-card" id="sdLists">${classLists()}</section>`;
+  if(tab === "staff") body = `<section class="rp-card" id="sdStaff">${staffPanel()}</section>`;
+  if(tab === "settings") body = settingsPanel();
+  app.innerHTML = navBar() + `<div class="rp-main">${body}</div>`;
+  const $ = s => app.querySelector(s);
+  app.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { tab = b.dataset.tab; render(app); });
+  $("#sdLock").onclick = () => { const wasSample = DATA.sample; DATA = null; F = null; listCls = ""; editing = null; issued = null; tab = "reports"; if(wasSample) return lock(app); Auth.logout(); };
+  $("#sdPw").onclick = () => { if(DATA.sample) return toast("Preview only."); Auth.changeForm(() => { location.hash = "teacher"; document.body.classList.add("staff"); render(app); }, false); };
+  if(tab === "reports") wireReport(app);
+  if(tab === "students") wireLists(app);
+  if(tab === "staff") wireStaff(app);
+  if(tab === "settings") wireSettings(app);
+}
+
+function reportHTML(){
   const inTerm = DATA.groups.filter(g => g.term === F.term);
   const years = [...new Set(inTerm.map(g => g.year))].sort((a,b) => yearNum(a)-yearNum(b));
   if(F.year !== "All" && !years.includes(F.year)) F.year = "All";
   const classes = [...new Set(inTerm.filter(g => F.year === "All" || g.year === F.year).map(g => g.cls))].sort(clsCmp);
   if(F.cls !== "All" && !classes.includes(F.cls)) F.cls = "All";
-  const R = rows();
-  const withAvg = R.filter(r => r.avg !== "");
-  const counts = BANDS.map(b => withAvg.filter(r => bandOf(r.avg) === b).length);
-  const noWork = R.length - withAvg.length;
-  const share = i => withAvg.length ? counts[i]/withAvg.length*100 : 0;
-  const meetPlus = withAvg.length ? (counts[2]+counts[3])/withAvg.length*100 : 0;
-  const avgComp = R.length ? R.reduce((a,r) => a + r.completion, 0)/R.length : 0;
-  const avgPct = withAvg.length ? withAvg.reduce((a,r) => a + r.avg, 0)/withAvg.length : "";
-  const lessonsTotal = [...new Set(R.map(r => r.g))].reduce((a,g) => a + g.lessons.length, 0);
-  const scope = [F.term, F.year === "All" ? "all year groups" : F.year, F.cls === "All" ? "all classes" : F.cls, F.subject === "All" ? "all subjects" : F.subject].join(" · ");
-  const upd = new Date(DATA.updated);
-
-  app.innerHTML = `
-  <section class="sd-head">
-    <div><span class="eyebrow">Staff dashboard${DATA.sample ? ` · <span class="flag">Sample data – not real students</span>` : ""}</span><h1>Progress &amp; achievement</h1>
-      <p class="small" id="sdScope">${esc(scope)} · updated ${upd.toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</p>
-      ${DATA.me ? `<p class="sd-who">Signed in as <b>${esc(DATA.me.name)}</b> · ${DATA.me.code ? esc(DATA.me.code) + " · " : ""}${DATA.me.role === "leader" ? "Leader: all classes" : esc((DATA.me.classes.join(", ") || "no classes yet") + " · " + DATA.me.subjects.join(", "))}</p>` : ""}</div>
-    <div class="row sd-actions">
-      <button class="btn sm alt" id="sdRefresh" type="button">Refresh</button>
-      <button class="btn sm alt" id="sdCsv" type="button">Download CSV</button>
-      <button class="btn sm" id="sdPrint" type="button">Print report</button>
-      <button class="btn sm alt" id="sdLock" type="button">Sign out</button>
-    </div>
-  </section>
-
-  <section class="panel sd-filters" aria-label="Filters">
-    <label>Term<select id="fTerm">${options(["Term 1","Term 2","Term 3"], F.term)}</select></label>
-    <label>Year group<select id="fYear">${options(years, F.year, "All year groups")}</select></label>
-    <label>Class<select id="fCls">${options(classes, F.cls, "All classes")}</select></label>
-    <label>Subject<select id="fSub">${options(DATA.me && DATA.me.subjects.length ? DATA.me.subjects : SUBJECTS, F.subject, DATA.me && DATA.me.subjects.length === 1 ? "" : "All subjects")}</select></label>
-  </section>
-
+  const subs = DATA.me && DATA.me.subjects.length ? DATA.me.subjects : SUBJECTS;
+  const R = rows(), withAvg = R.filter(r => r.avg !== "");
+  const counts = {}; BANDS.forEach(b => counts[b.k] = withAvg.filter(r => bandOf(r.avg) === b).length);
+  const classAvg = withAvg.length ? Math.round(withAvg.reduce((a,r) => a + r.avg, 0)/withAvg.length) : "";
+  const possible = R.reduce((a,r) => a + r.set, 0), done = R.reduce((a,r) => a + r.attempted, 0);
+  const lessonCount = [...new Set(R.map(r => r.g))].reduce((a,g) => a + g.lessons.length, 0);
+  const follow = R.filter(r => (r.avg !== "" && r.avg < 40) || r.set - r.attempted >= 3).length;
+  const yr = F.cls !== "All" ? "Year " + parseInt(F.cls) : F.year === "All" ? "All year groups" : F.year;
+  const title = [yr, F.subject === "All" ? "All subjects" : F.subject, F.cls === "All" ? "All classes" : "Class " + F.cls].join(" · ");
+  const order = ["exceeding","meeting","towards","below"].map(k => BANDS.find(b => b.k === k));
+  const sel = (id, label, list, val, all) => `<div class="rp-f"><label for="${id}">${label}</label><select id="${id}">${options(list, val, all)}</select></div>`;
+  return `
+  <div class="rp-head"><div><span class="rp-eyebrow">${esc(F.term)} report · 2026–27</span><h1>${esc(title)}</h1>
+    <p>Lesson completion and average score per student, reported in the four MOE / KHDA bands.${DATA.sample ? ` <b class="rp-demo">Demo data — sample students.</b>` : ""}</p></div>
+    <div class="rp-btns"><button type="button" class="rp-btn" id="sdRefresh">Refresh</button><button type="button" class="rp-btn" id="sdCsv">Download CSV</button><button type="button" class="rp-btn solid" id="sdPrint">Export term report (PDF)</button></div></div>
+  <form class="rp-card rp-filters" onsubmit="return false">
+    ${sel("fTerm","Term",["Term 1","Term 2","Term 3"],F.term)}
+    ${sel("fYear","Year group",years,F.year,"All year groups")}
+    ${sel("fSub","Subject",subs,F.subject,subs.length === 1 ? "" : "All subjects")}
+    ${sel("fCls","Class",classes,F.cls,"All classes")}
+    <div class="rp-f wide"><label for="sdQ">Find a student</label><input id="sdQ" type="search" placeholder="Name or M Number" value="${esc(query)}"></div>
+  </form>
   ${R.length ? `
-  <section class="sd-kpis">
-    <div class="kpi"><span class="kpi-v">${R.length}</span><span class="kpi-l">student records</span><span class="kpi-s">${lessonsTotal} lesson${lessonsTotal===1?"":"s"} set</span></div>
-    <div class="kpi"><span class="kpi-v">${pct(avgComp)}</span><span class="kpi-l">average completion</span><span class="kpi-s">${R.filter(r => r.attempted < r.set).length} missed at least one lesson</span></div>
-    <div class="kpi"><span class="kpi-v">${pct(avgPct)}</span><span class="kpi-l">average term %</span><span class="kpi-s">${avgPct === "" ? "no work yet" : bandOf(avgPct).name}</span></div>
-    <div class="kpi accent"><span class="kpi-v">${pct(meetPlus)}</span><span class="kpi-l">Meeting or above</span><span class="kpi-s">${counts[2]+counts[3]} of ${withAvg.length} students</span></div>
+  <section class="rp-kpis" aria-label="Class summary">
+    <div class="rp-card rp-kpi"><span class="l">${F.cls === "All" ? "Average" : "Class average"}</span><span class="v">${classAvg === "" ? "–" : classAvg + "%"}</span><span class="s">Band: <b>${classAvg === "" ? "no work yet" : bandOf(classAvg).name}</b></span></div>
+    <div class="rp-card rp-kpi"><span class="l">Lessons completed</span><span class="v">${possible ? Math.round(done/possible*100) : 0}%</span><span class="s">${done} of ${possible} student-lessons</span></div>
+    <div class="rp-card rp-kpi"><span class="l">Students</span><span class="v">${new Set(R.map(r => r.m)).size}</span><span class="s">${lessonCount} lesson${lessonCount === 1 ? "" : "s"} published this term</span></div>
+    <div class="rp-card rp-kpi warn"><span class="l">Need follow-up</span><span class="v">${follow}</span><span class="s">Below band or 3+ lessons missing</span></div>
   </section>
+  <section class="rp-card"><h2>Band distribution</h2>
+    <div class="rp-dist" aria-hidden="true">${order.map(b => counts[b.k] ? `<div style="background:${BAND_STYLE[b.k].bg};flex:${counts[b.k]} 1 0;min-width:8px"></div>` : "").join("") || `<div style="background:#E6EAE5;flex:1"></div>`}</div>
+    <div class="rp-legend">${order.map(b => `<div><span class="sw" style="background:${BAND_STYLE[b.k].bg}"></span><div><b>${b.name} · ${counts[b.k]}</b><span>${b.range}</span></div></div>`).join("")}
+      ${R.length - withAvg.length ? `<div><span class="sw" style="background:#E6EAE5"></span><div><b>No work yet · ${R.length - withAvg.length}</b><span>not in the average</span></div></div>` : ""}</div></section>
+  <section class="rp-card"><div class="rp-th"><h2>Students</h2><span>${DATA.zeroForMissed ? "Missed lessons count as 0%" : "Average is taken over lessons started"} · — = not started${F.cls !== "All" && F.subject !== "All" ? " · click a score to open the student's work" : ""}</span></div>
+    <div class="rp-scroll" id="sdTable"></div></section>` : `
+  <section class="rp-card"><h2>No results yet for ${esc(title)}</h2><p class="small">Results appear as soon as students work through a lesson while signed in. Try another term or class.</p></section>`}
+  <p class="rp-foot">Bands: Below 0–39 · Working towards 40–59 · Meeting 60–79 · Exceeding 80–100. Teachers see only the students on their own timetable; missing students can be added under <a href="#teacher" data-tab="students">${DATA.me && DATA.me.role === "leader" ? "Class lists" : "My students"}</a>.</p>`;
+}
 
-  <section class="panel">
-    <div class="sd-ph"><h2>Achievement bands</h2><span class="small">% of students with work this term${DATA.zeroForMissed ? " (missed lessons count as 0%)" : ""}</span></div>
-    <div class="bandbar" role="img" aria-label="${BANDS.map((b,i) => `${b.name} ${Math.round(share(i))}%`).join(", ")}">
-      ${BANDS.map((b,i) => counts[i] ? `<span class="b-${b.k}" style="flex:${counts[i]}"></span>` : "").join("") || `<span class="b-none" style="flex:1"></span>`}
-    </div>
-    <div class="bands">
-      ${BANDS.map((b,i) => `<div class="bandrow"><span class="sw b-${b.k}"></span><b>${b.name}</b><span class="small">${b.range}</span><span class="n">${counts[i]}</span><span class="p">${pct(share(i))}</span></div>`).join("")}
-      ${noWork ? `<div class="bandrow muted"><span class="sw b-none"></span><b>No work yet</b><span class="small">not in the %</span><span class="n">${noWork}</span><span class="p"></span></div>` : ""}
-    </div>
-  </section>
-
-  <section class="panel" id="sdGridWrap">${grid()}</section>
-
-  <section class="panel">
-    <div class="sd-ph"><h2>Students</h2>
-      <div class="row"><input id="sdQ" type="search" placeholder="Search a name or M Number" value="${esc(query)}" aria-label="Search a student">
-        <label class="chk"><input id="sdMissed" type="checkbox" ${onlyMissed?"checked":""}> Missed a lesson</label></div></div>
-    <div class="tscroll"><table class="sd-table" id="sdTable"></table></div>
-  </section>` : `
-  <section class="panel sd-empty"><h2>No results yet for ${esc(scope)}</h2><p class="small">Results appear once students work through a lesson with their M Number and class filled in at the top of the website. Try another term or class.</p></section>`}
-  <section class="panel" id="sdLists">${classLists()}</section>
-  ${DATA.me && DATA.me.role === "leader" ? `<section class="panel" id="sdStaff">${staffPanel()}</section>` : ""}`;
-
+function wireReport(app){
   const $ = s => app.querySelector(s);
   $("#fTerm").onchange = e => { F.term = e.target.value; render(app); };
   $("#fYear").onchange = e => { F.year = e.target.value; F.cls = "All"; render(app); };
   $("#fCls").onchange = e => { F.cls = e.target.value; render(app); };
   $("#fSub").onchange = e => { F.subject = e.target.value; render(app); };
   $("#sdRefresh").onclick = () => DATA.sample ? render(app) : call(app, {action:"data"});
-  $("#sdLock").onclick = () => { ss.set("who", null); const wasSample = DATA.sample; DATA = null; F = null; listCls = ""; editing = null; issued = null; wasSample ? show(app, () => {}) : lock(app); };
-  wireLists(app); wireStaff(app);
   $("#sdPrint").onclick = () => window.print();
-  $("#sdCsv").onclick = () => csv(R);
-  if(R.length){
-    $("#sdQ").oninput = e => { query = e.target.value; table(app, R); };
-    $("#sdMissed").onchange = e => { onlyMissed = e.target.checked; table(app, R); };
-    table(app, R);
-  }
+  $("#sdCsv").onclick = () => csv(rows());
+  $("#sdQ").oninput = e => { query = e.target.value; table(app); };
+  app.querySelectorAll(".rp-foot [data-tab]").forEach(a => a.onclick = e => { e.preventDefault(); tab = "students"; render(app); });
+  table(app);
 }
 
-/* Lesson-by-lesson grid: one class and one subject */
-function grid(){
-  if(F.cls === "All" || F.subject === "All")
-    return `<div class="sd-ph"><h2>Lesson by lesson</h2></div><p class="small">Choose one <b>class</b> and one <b>subject</b> above to see each student's % for every lesson, and who hasn't done it yet.</p>`;
-  const g = DATA.groups.find(x => x.term === F.term && x.cls === F.cls && x.subject === F.subject);
-  if(!g) return `<div class="sd-ph"><h2>Lesson by lesson</h2></div><p class="small">No ${esc(F.subject)} lessons for ${esc(F.cls)} in ${esc(F.term)} yet.</p>`;
-  const L = g.lessons;
-  const head = `<tr><th class="nm">Student</th>${L.map((l,i) => `<th title="${esc(l.title)}${l.date ? " · "+esc(l.date) : ""}"><span class="ln">L${i+1}</span><span class="lt">${esc(l.title)}</span></th>`).join("")}<th>Done</th><th>Term</th></tr>`;
-  const body = g.students.map(s => {
-    const done = L.filter(l => s.done[l.id]); const sum = done.reduce((a,l) => a + s.done[l.id][0], 0);
-    const avg = DATA.zeroForMissed ? (L.length ? sum/L.length : "") : (done.length ? sum/done.length : "");
-    const b = bandOf(avg);
-    return `<tr><td class="nm">${esc(s.name)}<span class="mno">${esc(s.m || "")}</span>${s.onRoster ? "" : ` <span class="flag" title="This M Number isn't on the school list">check M Number</span>`}</td>${L.map(l => {
-      const d = s.done[l.id]; if(!d) return `<td class="c miss" title="Not attempted">—</td>`;
-      const bb = bandOf(d[0]); return `<td class="c b-${bb.k}${d[1] ? "" : " prog"}" title="${d[1] ? "Completed" : "In progress · steps " + esc(d[2])}">${d[0]}%</td>`;
-    }).join("")}<td class="c">${done.length}/${L.length}</td><td class="c ${b ? "b-"+b.k : "miss"}">${avg === "" ? "–" : Math.round(avg)+"%"}</td></tr>`;
-  }).join("");
-  return `<div class="sd-ph"><h2>Lesson by lesson · ${esc(F.cls)} ${esc(F.subject)}</h2><span class="small">— not attempted · <i>italic</i> started, not finished</span></div>
-    <div class="tscroll"><table class="sd-grid">${head}${body}</table></div>`;
-}
-
-function table(app, R){
+/* One class + one subject: lesson-by-lesson grid. Otherwise: one row per student per class and subject. */
+function table(app){
+  const box = app.querySelector("#sdTable"); if(!box) return;
   const q = query.trim().toLowerCase();
-  let list = R.filter(r => (!q || r.name.toLowerCase().includes(q) || r.m.toLowerCase().includes(q)) && (!onlyMissed || r.attempted < r.set));
-  const key = {cls: r => [parseInt(r.cls), r.cls, SUBJECTS.indexOf(r.subject), r.name],
-    name: r => [r.name], subject: r => [SUBJECTS.indexOf(r.subject), r.name], completion: r => [r.completion],
-    avg: r => [r.avg === "" ? -1 : r.avg]}[sortBy.col];
-  list.sort((a,b) => { const x = key(a), y = key(b); for(let i = 0; i < x.length; i++){ if(x[i] < y[i]) return -sortBy.dir; if(x[i] > y[i]) return sortBy.dir; } return 0; });
-  const th = (col, label) => `<th${col ? ` data-col="${col}" aria-sort="${sortBy.col===col ? (sortBy.dir>0?"ascending":"descending") : "none"}" tabindex="0"` : ""}>${label}${sortBy.col===col ? (sortBy.dir>0 ? " ▲" : " ▼") : ""}</th>`;
-  const t = app.querySelector("#sdTable");
-  t.innerHTML = `<thead><tr>${th("cls","Class")}${th("subject","Subject")}${th("name","Student")}${th("completion","Completion")}${th("avg","Term %")}${th("","Band")}${th("","Not attempted yet")}</tr></thead><tbody>${
-    list.map(r => { const b = bandOf(r.avg); return `<tr>
-      <td>${esc(r.cls)}</td><td>${esc(r.subject)}</td>
-      <td class="nm">${esc(r.name)}<span class="mno">${esc(r.m)}</span>${r.onRoster ? "" : ` <span class="flag" title="This M Number isn't on the school list">check M Number</span>`}</td>
-      <td><span class="meter" aria-hidden="true"><i style="width:${Math.round(r.completion)}%"></i></span> ${r.attempted}/${r.set}</td>
-      <td class="num">${pct(r.avg)}</td>
-      <td>${b ? `<span class="bchip b-${b.k}">${b.name}</span>` : `<span class="bchip b-none">No work yet</span>`}</td>
-      <td class="missed">${r.missed.length ? r.missed.map(l => esc(l.title)).join(" · ") : `<span class="small">All done</span>`}</td></tr>`; }).join("")
-    || `<tr><td colspan="7" class="small">No students match.</td></tr>`}</tbody>`;
-  t.querySelectorAll("th[data-col]").forEach(h => { const go = () => { const c = h.dataset.col; sortBy = {col:c, dir: sortBy.col === c ? -sortBy.dir : (c === "avg" || c === "completion" ? -1 : 1)}; table(app, R); };
-    h.onclick = go; h.onkeydown = e => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); go(); } }; });
+  const R = rows().filter(r => !q || r.name.toLowerCase().includes(q) || r.m.toLowerCase().includes(q));
+  const g = F.cls !== "All" && F.subject !== "All" ? DATA.groups.find(x => x.term === F.term && x.cls === F.cls && x.subject === F.subject) : null;
+  if(g){
+    const L = g.lessons;
+    box.innerHTML = `<table class="rp-table" style="min-width:${560 + L.length*46}px"><thead><tr><th>Student</th><th>M Number</th>${L.map((l,i) => `<th class="c" title="${esc(l.title)}${l.date ? " · " + esc(l.date) : ""}">L${i+1}</th>`).join("")}<th class="c">Done</th><th class="c">Average</th><th>Band</th></tr></thead><tbody>${
+      R.sort((a,b) => a.name.localeCompare(b.name)).map(r => { const s = g.students.find(x => x.m === r.m) || {done:{}};
+        return `<tr><td class="nm">${esc(r.name)}${r.onRoster ? "" : ` <span class="flag">check M Number</span>`}</td><td class="mn">${esc(r.m)}</td>${L.map(l => `<td class="c">${cell(s.done[l.id], !DATA.sample && l.key ? `#view/${esc(r.m)}/${esc(l.key)}` : "", l.title + (s.done[l.id] ? (s.done[l.id][1] ? " · completed" : " · in progress, steps " + s.done[l.id][2]) : ""))}</td>`).join("")}
+          <td class="c mn">${r.attempted}/${r.set}</td><td class="c avg">${r.avg === "" ? "–" : r.avg + "%"}</td><td>${pill(bandOf(r.avg))}</td></tr>`; }).join("") || `<tr><td colspan="${L.length + 5}" class="small">No students match.</td></tr>`}</tbody></table>
+      <p class="small rp-key">${L.map((l,i) => `<b>L${i+1}</b> ${esc(l.title)}`).join(" · ")}</p>`;
+    return;
+  }
+  box.innerHTML = `<table class="rp-table" style="min-width:860px"><thead><tr><th>Student</th><th>M Number</th><th>Class</th><th>Subject</th><th class="c">Done</th><th class="c">Average</th><th>Band</th><th>Not attempted yet</th></tr></thead><tbody>${
+    R.sort((a,b) => clsCmp(a.cls,b.cls) || SUBJECTS.indexOf(a.subject) - SUBJECTS.indexOf(b.subject) || a.name.localeCompare(b.name)).map(r => `<tr>
+      <td class="nm"><a href="#teacher" data-go="${esc(r.cls)}|${esc(r.subject)}">${esc(r.name)}</a>${r.onRoster ? "" : ` <span class="flag">check M Number</span>`}</td><td class="mn">${esc(r.m)}</td><td>${esc(r.cls)}</td><td>${esc(r.subject)}</td>
+      <td class="c mn">${r.attempted}/${r.set}</td><td class="c avg">${r.avg === "" ? "–" : r.avg + "%"}</td><td>${pill(bandOf(r.avg))}</td>
+      <td class="missed">${r.missed.length ? r.missed.map(l => esc(l.title)).join(" · ") : `<span class="small">All done</span>`}</td></tr>`).join("")
+    || `<tr><td colspan="8" class="small">No students match.</td></tr>`}</tbody></table>`;
+  box.querySelectorAll("[data-go]").forEach(a => a.onclick = e => { e.preventDefault(); const [c, s] = a.dataset.go.split("|"); F.cls = c; F.subject = s; F.year = "Year " + parseInt(c); render(app); });
 }
 
+/* ---------- Settings (leaders): class password, term dates, average rule, school list, backup ---------- */
+function settingsPanel(){
+  const st = DATA.settings || {studentPassword:"", terms: DATA.terms || {}, zeroForMissed: DATA.zeroForMissed};
+  return `<section class="rp-card sd-admin"><h2>Student sign-in</h2>
+    <p class="small">Students sign in with their M Number and this class password the first time, then choose their own password. If a student forgets theirs, press <b>Reset password</b> next to their name under Class lists: they can then use this class password again.</p>
+    <div class="grid3"><label>Class password<input id="stPass" type="text" value="${esc(st.studentPassword)}" spellcheck="false" maxlength="40"></label></div></section>
+  <section class="rp-card sd-admin"><h2>Terms and averages</h2>
+    <p class="small">Each lesson is placed in a term by its lesson date.</p>
+    <div class="grid3">${["Term 1","Term 2","Term 3"].map((t,i) => `<label>${t} starts<input id="stT${i}" type="date" value="${esc((st.terms || {})[t] || "")}"></label>`).join("")}</div>
+    <label class="chk"><input id="stZero" type="checkbox" ${st.zeroForMissed ? "checked" : ""}> Missed lessons count as 0% in the average</label>
+    <div class="row"><button class="btn" type="button" id="stSave">Save settings</button></div></section>
+  <section class="rp-card sd-admin"><h2>School student list</h2>
+    <p class="small">Upload the master student list as an Excel file (File → Download → Microsoft Excel in Google Sheets). One tab per year with the headings M Number, Name, Section, ME/ Lit (+ teacher), SS/MSC (+ teacher) and Literacy/ Islamic Teacher. Students added by teachers are kept. Last import: <b>${esc(DATA.lastImport || "not yet")}</b>.</p>
+    <div class="row"><input type="file" id="stFile" accept=".xlsx,.xls,.csv"><button class="btn alt" type="button" id="stImport">Import list</button></div><p class="sd-msg" id="stMsg"></p></section>
+  <section class="rp-card sd-admin"><h2>Backup</h2>
+    <p class="small">Download everything (accounts, class lists, every student's saved work and results) as one file. Cloudflare also keeps 30 days of automatic restore points for the database (Time Travel).</p>
+    <div class="row"><button class="btn alt" type="button" id="stBackup">Download full backup</button></div></section>`;
+}
+function wireSettings(app){
+  const $ = s => app.querySelector(s);
+  $("#stSave").onclick = () => { if(DATA.sample) return toast("Preview only.");
+    call(app, {action:"saveSettings", settings:{studentPassword: $("#stPass").value, zeroForMissed: $("#stZero").checked,
+      terms: {"Term 1": $("#stT0").value, "Term 2": $("#stT1").value, "Term 3": $("#stT2").value}}}); };
+  $("#stBackup").onclick = async () => { if(DATA.sample) return toast("Preview only.");
+    try{ const d = await api({action:"backup"}); if(!d.ok) return toast(d.message);
+      const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(d.backup)], {type:"application/json"}));
+      a.download = "EduGhaf-backup-" + new Date().toISOString().slice(0,10) + ".json"; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1000);
+    }catch(e){ toast("Couldn't download the backup."); } };
+  $("#stImport").onclick = async () => { const f = $("#stFile").files[0], m = $("#stMsg"); if(!f){ m.textContent = "Choose the Excel file first."; return; }
+    if(DATA.sample){ m.textContent = "Preview only."; return; }
+    m.textContent = "Reading the file…";
+    try{ const r = await readMasterList(f); if(!r.students.length){ m.textContent = "No students found. Check each year tab has M Number, Name and Section headings."; return; }
+      m.textContent = "Importing " + r.students.length + " students…"; call(app, {action:"importRoster", students: r.students, legend: r.legend});
+    }catch(e){ m.textContent = "Couldn't read that file: " + e.message; } };
+}
+
+/* The master list: one tab per year ("Year 7" …). Same rules as the old Google Sheet import. */
+async function readMasterList(file){
+  if(!window.XLSX) await new Promise((ok, no) => { const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"; s.onload = ok; s.onerror = () => no(new Error("couldn't load the Excel reader")); document.head.appendChild(s); });
+  const wb = XLSX.read(await file.arrayBuffer(), {type:"array"});
+  const codesOf = v => [...new Set(String(v||"").toUpperCase().split(/[\/,;&+\s]+/).map(x => x.trim()).filter(x => /^[A-Z]{2,4}$/.test(x) && x !== "NA"))];
+  const mNo = v => { const m = String(v||"").trim().toUpperCase().replace(/\s+/g,"").match(/^M?(\d{3,7})$/); return m ? "M" + m[1] : ""; };
+  const clsOf = sec => { const m = String(sec||"").toUpperCase().replace(/\s+/g,"").match(/^Y?(\d{1,2})([A-Z])/); return m ? m[1] + m[2] : ""; };
+  const students = [], legend = {};
+  wb.SheetNames.forEach(n => {
+    if(!/year\s*\d+/i.test(n) && wb.SheetNames.length > 1) return;
+    const v = XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, raw:false, defval:""}).map(r => r.map(c => String(c)));
+    const hr = v.findIndex(r => r.some(c => /^name$/i.test(c.trim())) && r.some(c => /^section$/i.test(c.trim()))); if(hr < 0) return;
+    const H = v[hr].map(c => c.replace(/\s+/g,"").toLowerCase()), col = re => H.findIndex(h => re.test(h));
+    let cM = col(/^mnumber$/); const cName = col(/^name$/), cSec = col(/^section$/), cMel = col(/^me\/?lit$/), cSsm = col(/^ss\/?msc$/), cLi = col(/^literacy\/?islamicteacher$/);
+    if(cM < 0) cM = 0;
+    for(let i = hr + 1; i < v.length; i++){ const r = v[i];
+      for(let c = 0; c < r.length - 1; c++){ const code = r[c].trim().toUpperCase(), nm = r[c+1].trim(); if(/^[A-Z]{2,4}$/.test(code) && /^(ms|mr|mrs|miss|dr)\b/i.test(nm)) legend[code] = nm.replace(/\s+/g," "); }
+      const m = mNo(r[cM]); if(!m) continue;
+      const sub = {msc:[], ss:[], me:[], lit:[]};
+      const mel = cMel >= 0 ? r[cMel].trim().toLowerCase() : "", melT = cMel >= 0 ? codesOf(r[cMel+1]) : [];
+      if(mel === "lit") sub.lit = sub.lit.concat(melT); else if(mel === "me") sub.me = melT;
+      const ssm = cSsm >= 0 ? r[cSsm].trim().toLowerCase() : "", ssmT = cSsm >= 0 ? codesOf(r[cSsm+1]) : [];
+      if(ssm === "msc") sub.msc = ssmT; else if(ssm === "ss") sub.ss = ssmT;
+      if(cLi >= 0) sub.lit = [...new Set(sub.lit.concat(codesOf(r[cLi])))];
+      const sec = String(r[cSec] || "").trim();
+      students.push([m, r[cName], clsOf(sec), sec, sub.msc.join(", "), sub.ss.join(", "), sub.me.join(", "), sub.lit.join(", ")]);
+    }
+  });
+  return {students, legend};
+}
 function csv(R){
   const head = ["Term","Year","Class","Subject","M Number","Student","On school list","Lessons set","Lessons attempted","Lessons completed","Completion %","Term %","Band","Not attempted yet"];
   const q = v => /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g,'""')}"` : String(v);
@@ -342,14 +415,14 @@ function staffPanel(){
     <td>${a.code ? `<code>${esc(a.code)}</code>` : "–"}</td>
     <td><span class="bchip ${a.role === "Leader" ? "b-exceeding" : "b-none"}">${a.role}</span></td>
     <td class="num">${a.role === "Leader" ? `<span class="small">All</span>` : a.students + (a.classes.length ? ` <span class="small">+ ${esc(a.classes.join(", "))}</span>` : "")}</td>
-    <td>${a.hasPass ? "Set" : `<span class="flag">Not set</span>`}</td>
+    <td>${!a.hasPass ? `<span class="flag">Not set</span>` : a.waiting ? "Starting password" : "Own password"}</td>
     <td class="acts"><button class="btn sm alt" type="button" data-edit="${esc(a.user)}">${a.hasPass ? "Edit" : "Set password"}</button>${a.user === me.user ? "" : `<button class="x" type="button" data-del="${esc(a.user)}" aria-label="Delete ${esc(a.name || a.user)}" title="Delete account">×</button>`}</td></tr>`).join("");
   const waiting = list.filter(a => !a.hasPass).length;
   return `<div class="sd-ph"><h2>Staff accounts</h2><span class="small">Only leaders see this. One login per teacher code from the school list; each teacher sees only their students.</span></div>
-    <div class="row sd-import"><span class="small">School list: ${esc(DATA.lastImport || "not imported yet")}</span><button class="btn sm alt" type="button" id="acImport">Import now</button></div>
-    ${waiting ? `<p class="small">${waiting} teacher${waiting===1?" has":"s have"} no password yet, so can't sign in. Use <b>Set password</b>, then share the login.</p>` : ""}
+    <div class="row sd-import"><span class="small">School list: ${esc(DATA.lastImport || "not imported yet")}</span><button class="btn sm alt" type="button" id="acImport">Upload the school list</button></div>
+    ${waiting ? `<p class="small">${waiting} teacher${waiting===1?" has":"s have"} no password yet, so can't sign in. Use <b>Set password</b> to give a starting password, then share the login: they choose their own password the first time they sign in.</p>` : ""}
     ${issued ? `<div class="sd-issued" role="status"><b>Login for ${esc(issued.name)}</b><span>Username <code>${esc(issued.user)}</code> · Password <code>${esc(issued.pass)}</code></span>
-      <span class="small">Copy it now and share it privately: the password can't be shown again (you can set a new one with Edit).</span>
+      <span class="small">Share it privately. This is a starting password: they'll choose their own the first time they sign in.</span>
       <div class="row"><button class="btn sm" type="button" id="acCopy">Copy login</button><button class="btn sm alt" type="button" id="acDone">Done</button></div></div>` : ""}
     ${editing ? accountForm() : `<div class="row"><button class="btn" type="button" id="acNew">+ Add a staff login</button></div>`}
     <div class="tscroll"><table class="sd-table sd-staff"><thead><tr><th>Name</th><th>Username</th><th>Code</th><th>Role</th><th>Students</th><th>Password</th><th></th></tr></thead><tbody>${rowsH || `<tr><td colspan="7" class="small">No accounts yet.</td></tr>`}</tbody></table></div>`;
@@ -381,13 +454,13 @@ function wireStaff(app){
   const box = app.querySelector("#sdStaff"); if(!box || !box.querySelectorAll) return;
   const again = () => { box.innerHTML = staffPanel(); wireStaff(app); };
   const q = s => app.querySelector(s);
-  const im = q("#acImport"); if(im) im.onclick = () => { if(DATA.sample) return toast("Preview only: the real dashboard reads the school list from the Sheet."); im.disabled = true; im.textContent = "Importing…"; call(app, {action:"importLists"}); };
+  const im = q("#acImport"); if(im) im.onclick = () => { tab = "settings"; render(app); };
   const nb = q("#acNew"); if(nb) nb.onclick = () => { issued = null; editing = {name:"", user:"", code:"", role:"Teacher", classes:[], pass: genPass(), hasPass:false}; again(); const n = q("#acName"); n && n.focus && n.focus(); };
   box.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => { const a = DATA.staff.find(x => x.user === b.dataset.edit); issued = null;
     editing = {orig:a.user, name:a.name, user:a.user, code:a.code, role:a.role, classes:a.classes.slice(), hasPass:a.hasPass, pass: a.hasPass ? "" : genPass()}; again(); });
   box.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { const a = DATA.staff.find(x => x.user === b.dataset.del);
     if(confirm(`Delete the login for ${a.name || a.user}? They won't be able to sign in. Their students and results stay.`)) saveAccount(app, "deleteStaff", {username: a.user}); });
-  const cp = q("#acCopy"); if(cp) cp.onclick = () => { const t = `EduGhaf staff login\n${location.href.split("#")[0]}#teacher\nUsername: ${issued.user}\nPassword: ${issued.pass}`;
+  const cp = q("#acCopy"); if(cp) cp.onclick = () => { const t = `EduGhaf staff login\n${location.href.split("#")[0]}#teacher\nUsername: ${issued.user}\nStarting password: ${issued.pass}\nYou'll choose your own password when you first sign in.`;
     try{ navigator.clipboard.writeText(t).then(() => toast("Login copied."), () => toast("Couldn't copy. Select and copy the text instead.")); }catch(e){ toast("Couldn't copy. Select and copy the text instead."); } };
   const dn = q("#acDone"); if(dn) dn.onclick = () => { issued = null; again(); };
   const f = q("#acForm"); if(!f || !editing) return;

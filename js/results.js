@@ -10,8 +10,8 @@
 const CFG = window.COMPASS_CONFIG || {};
 const PREFIX = "msc:";
 const STEP_KEYS = {
-  msc: ["start","donow","learn","group","game","analyse","create","copy","quiz","reflect"],
-  me:  ["start","dna","words","task1","task2","task3","game","copy","quiz","reflect"],
+  msc: ["start","donow","learn","game","analyse","create","copy","quiz","reflect"],
+  me:  ["start","dna","words","task1","task2","game","copy","quiz","reflect"],
   lit: ["retrieve","consolidate","practise","apply","reflect"]
 };
 STEP_KEYS.ss = STEP_KEYS.msc;

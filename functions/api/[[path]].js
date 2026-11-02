@@ -75,7 +75,7 @@ async function settings(db) {
 const setSetting = (db, k, v) => db.prepare("INSERT INTO settings(k, v) VALUES(?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(k, String(v)).run();
 function terms(s) { const t = {}; Object.keys(DEFAULT_TERMS).forEach(k => t[k] = s[k + " starts"] || DEFAULT_TERMS[k]); return t; }
 function termOf(s, date) { const t = terms(s); let term = "Term 1"; Object.keys(t).forEach(k => { if (date >= t[k]) term = k; }); return term; }
-const studentPassword = (s, env) => s["Student password"] || env.STUDENT_PASSWORD || "Meadows2026";
+const studentPassword = (s, env) => String(s["Student password"] || env.STUDENT_PASSWORD || "Meadows2026").trim();
 
 /* ---------- sessions ---------- */
 async function newSession(db, username, staff) {
@@ -166,7 +166,7 @@ async function profile(db, w) {
 }
 
 async function login(db, env, d) {
-  const raw = clean(d.user, 60), pass = String(d.pass || "");
+  const raw = clean(d.user, 60), pass = String(d.pass || "").trim();
   if (!raw || !pass) return fail("wrong", "Enter your M Number (or staff username) and password.");
   const m = mNumber(raw);
   const user = m || raw.toLowerCase();
@@ -190,8 +190,9 @@ async function login(db, env, d) {
   }
 
   // staff
-  const admin = String(env.ADMIN_USER || "laura").toLowerCase();
-  if (user === admin && env.ADMIN_PASSWORD && pass === env.ADMIN_PASSWORD) {   // first sign-in or recovery
+  const admin = String(env.ADMIN_USER || "laura").trim().toLowerCase();
+  const adminPass = String(env.ADMIN_PASSWORD || "").trim();
+  if (user === admin && adminPass && pass === adminPass) {   // first sign-in or recovery
     if (!u) await db.prepare("INSERT INTO users(username, role, name, code, classes, pass, must_change, created) VALUES(?, 'leader', 'Laura Husseiny', 'LHU', '', '', 1, ?)").bind(user, now()).run();
     else await db.prepare("UPDATE users SET role = 'leader', must_change = 1 WHERE username = ?").bind(user).run();
     await clearFails(db, user);
@@ -206,7 +207,7 @@ async function login(db, env, d) {
 }
 
 async function changePass(db, env, w, d) {
-  const np = String(d.newPass || "");
+  const np = String(d.newPass || "").trim();
   const min = w.role === "student" ? 6 : 8;
   if (np.length < min) return fail("bad", `Your new password needs at least ${min} characters.`);
   if (np.length > 100) return fail("bad", "That password is too long.");
@@ -216,7 +217,7 @@ async function changePass(db, env, w, d) {
   }
   const s = await settings(db);
   if (w.role === "student" && np === studentPassword(s, env)) return fail("bad", "Choose a password that's different from the class password.");
-  if (env.ADMIN_PASSWORD && np === env.ADMIN_PASSWORD) return fail("bad", "Choose a new password, not the setup password.");
+  if (env.ADMIN_PASSWORD && np === String(env.ADMIN_PASSWORD).trim()) return fail("bad", "Choose a new password, not the setup password.");
   await db.prepare("UPDATE users SET pass = ?, must_change = 0 WHERE username = ?").bind(await hashPass(np), w.user).run();
   await db.prepare("DELETE FROM sessions WHERE username = ? AND token != ?").bind(w.user, w.token).run();
   return json({ ok: true, message: "Password changed." });
